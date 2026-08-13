@@ -563,6 +563,7 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
   margin-bottom: 10px;
 }
 .cloud-status { color: var(--text-dim); font-size: 13px; min-height: 18px; margin: 4px 0 10px; }
+.coupon-expired { color: var(--bad); }
 .cloud-divider { color: var(--text-dim); font-size: 12px; margin: 20px 0 10px; }
 .sync-code-input {
   background: var(--panel);

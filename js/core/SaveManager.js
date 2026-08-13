@@ -11,6 +11,7 @@ function defaultState() {
     levelObjectives: {},
     daily: { date: null, progress: 0, rewarded: false },
     decorations: { owned: ['none'], equipped: 'none' },
+    coupon: { code: null, unlockedAt: null },
     nickname: '',
     syncCode: null,
   };
@@ -33,6 +34,7 @@ export class SaveManager {
         settings: { ...defaultState().settings, ...parsed.settings },
         daily: { ...defaultState().daily, ...parsed.daily },
         decorations: { ...defaultState().decorations, ...parsed.decorations },
+        coupon: { ...defaultState().coupon, ...parsed.coupon },
       };
     } catch {
       return defaultState();
@@ -118,6 +120,15 @@ export class SaveManager {
     this.persist();
   }
 
+  // Se llama tras cada resultado de nivel. Solo la primera vez que se
+  // cumple la condición se genera el código y arranca la vigencia.
+  maybeUnlockCoupon(codeFactory) {
+    if (this.state.coupon.unlockedAt) return false;
+    this.state.coupon = { code: codeFactory(), unlockedAt: Date.now() };
+    this.persist();
+    return true;
+  }
+
   ownsDecoration(id) {
     return this.state.decorations.owned.includes(id);
   }
@@ -170,6 +181,7 @@ export class SaveManager {
       upgrades: { ...defaults.upgrades, ...data.upgrades },
       settings: { ...defaults.settings, ...data.settings },
       decorations: { ...defaults.decorations, ...data.decorations },
+      coupon: { ...defaults.coupon, ...data.coupon },
       syncCode: this.state.syncCode,
     };
     this.persist();

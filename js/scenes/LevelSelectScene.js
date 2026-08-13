@@ -5,6 +5,8 @@ import { ShopScene } from './ShopScene.js';
 import { KitchenScene } from './KitchenScene.js';
 import { LeaderboardScene } from './LeaderboardScene.js';
 import { DecorScene } from './DecorScene.js';
+import { CouponScene } from './CouponScene.js';
+import { isCouponValid } from '../game/coupon.js';
 
 export class LevelSelectScene {
   constructor(app) {
@@ -51,6 +53,14 @@ export class LevelSelectScene {
       addTap(lbBtn, () => this.app.goTo(LeaderboardScene));
       wrap.append(lbBtn);
     }
+
+    const { code, unlockedAt } = this.app.save.state.coupon;
+    if (code && isCouponValid(unlockedAt)) {
+      const couponBtn = el('button', 'btn btn-order', '🎟️ Mi cupón');
+      addTap(couponBtn, () => this.app.goTo(CouponScene));
+      wrap.append(couponBtn);
+    }
+
     root.append(wrap);
   }
 

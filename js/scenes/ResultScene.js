@@ -12,6 +12,10 @@ import {
   dailyProgressFrom,
   mergeDailyProgress,
 } from '../game/objectives.js';
+import { COUPON, isFullyMastered, isCouponValid, daysLeft, generateCouponCode } from '../game/coupon.js';
+import { drawShareCard, canvasToBlob } from '../game/shareCard.js';
+
+const MUSHIPAN_MAYOREO_URL = 'https://inusushi.github.io/mushipan.html';
 
 export class ResultScene {
   constructor(app, params) {
@@ -26,6 +30,12 @@ export class ResultScene {
     this.app.save.registerLevelResult(levelIndex, stars);
     if (stars > 0) this.app.audio.levelComplete(stars);
     else this.app.audio.levelFailed();
+
+    // Cupón real: se desbloquea una sola vez, al tener 3⭐ en los 8 niveles.
+    const justUnlockedCoupon =
+      isFullyMastered(this.app.save.state.levelStars, LEVELS.length) &&
+      this.app.save.maybeUnlockCoupon(generateCouponCode);
+    if (justUnlockedCoupon) this.app.audio.levelComplete(3);
 
     const objectives = evaluateObjectives(result);
     const nuevos = this.app.save.recordObjectives(levelIndex, objectives);
@@ -88,6 +98,10 @@ export class ResultScene {
     if (daily.justCompleted) this.app.audio.purchase();
     wrap.append(dailyBox);
 
+    if (justUnlockedCoupon) {
+      wrap.append(this.buildCouponBox());
+    }
+
     if (stars > 0) {
       const level = LEVELS[levelIndex];
       const orderBtn = linkButton(
@@ -97,6 +111,18 @@ export class ResultScene {
       );
       orderBtn.addEventListener('click', () => this.app.audio.tap());
       wrap.append(orderBtn);
+
+      if (level.id === 'mushipan') {
+        const mayoreoBtn = linkButton(
+          'btn btn-secondary',
+          '🥟 ¿Tienes un negocio? Vende Mushipan',
+          MUSHIPAN_MAYOREO_URL,
+        );
+        mayoreoBtn.addEventListener('click', () => this.app.audio.tap());
+        wrap.append(mayoreoBtn);
+      }
+
+      wrap.append(this.buildShareButton(levelIndex, coinsEarned, stars));
     }
 
     if (this.app.leaderboard.configured && stars > 0) {
@@ -119,6 +145,63 @@ export class ResultScene {
     wrap.append(backBtn);
 
     root.append(wrap);
+  }
+
+  buildCouponBox() {
+    const { code, unlockedAt } = this.app.save.state.coupon;
+    const box = el('div', 'leaderboard-box');
+    box.append(el('div', 'objectives-title', '🎉 ¡Cupón desbloqueado!'));
+    box.append(el('div', 'result-line', '3 estrellas en los 8 niveles — te ganaste esto:'));
+    box.append(el('div', 'sync-code-box', code));
+    box.append(el('div', 'lb-note', `${COUPON.discountPercent}% de descuento · mínimo $${COUPON.minPurchase} · solo ${COUPON.channel.toLowerCase()} · vigente ${daysLeft(unlockedAt)} días`));
+
+    const msg = `¡Hola Inu Sushi! 🍣 Completé Inu Kitchen Fever con 3 estrellas en todo y quiero usar mi cupón ${code}: ${COUPON.discountPercent}% de descuento (mínimo $${COUPON.minPurchase}, solo ${COUPON.channel.toLowerCase()}).`;
+    const redeemBtn = linkButton('btn btn-order', '🍣 Usar mi cupón por WhatsApp', whatsappOrderUrl(msg));
+    redeemBtn.addEventListener('click', () => this.app.audio.tap());
+    box.append(redeemBtn);
+    return box;
+  }
+
+  buildShareButton(levelIndex, coins, stars) {
+    const level = LEVELS[levelIndex];
+    const btn = el('button', 'btn btn-secondary', '📸 Compartir mi partida');
+    addTap(btn, async () => {
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Generando…';
+      try {
+        const canvas = await drawShareCard({
+          levelEmoji: level.emoji,
+          levelName: level.name,
+          stars,
+          coins,
+          logoUrl: 'fotos/logo-inu-sushi.png',
+        });
+        const blob = await canvasToBlob(canvas);
+        const file = new File([blob], 'inu-kitchen-fever.png', { type: 'image/png' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Inu Kitchen Fever',
+            text: `¡Saqué ${stars}⭐ en ${level.name} jugando Inu Kitchen Fever! 🍣`,
+          });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'inu-kitchen-fever.png';
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+        }
+      } catch {
+        // El jugador canceló el share, o el navegador lo bloqueó: no es un error real.
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    });
+    return btn;
   }
 
   // Publicar es opcional y explícito: el apodo queda visible para todos, así
