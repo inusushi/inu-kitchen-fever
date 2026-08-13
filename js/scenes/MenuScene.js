@@ -16,8 +16,8 @@ export class MenuScene {
       muteBtn.textContent = muted ? '🔇' : '🔊';
     });
 
-    const title = el('h1', 'game-title', 'Cocina Fever');
-    const subtitle = el('p', 'game-subtitle', 'Prepara, sirve y no dejes esperar a nadie.');
+    const title = el('h1', 'game-title', 'Inu Kitchen Fever');
+    const subtitle = el('p', 'game-subtitle', 'El menú real de Inu Sushi: onigiri, rollos, bento, banderillas y Mushipan.');
 
     const coinsBadge = el('div', 'coins-badge', `💰 ${this.app.save.state.coins}`);
 
