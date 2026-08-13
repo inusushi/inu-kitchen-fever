@@ -26,6 +26,13 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg}'],
+        // Quien ya abrió el juego antes tiene un service worker viejo que le
+        // serviría una versión pasada indefinidamente. Con esto el nuevo toma
+        // el control en cuanto se instala y tira los cachés anteriores, sin
+        // que nadie tenga que borrar datos del sitio a mano.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
     }),
   ],
