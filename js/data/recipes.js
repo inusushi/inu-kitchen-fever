@@ -53,6 +53,42 @@ export const RECIPES = {
     id: 'donut', name: 'Dona', emoji: '🍩', price: 14,
     steps: [{ station: 'cook', duration: 1800 }, { station: 'plate', duration: 800 }],
   },
+  taco: {
+    id: 'taco', name: 'Taco', emoji: '🌮', price: 16,
+    steps: [{ station: 'chop', duration: 1200 }, { station: 'cook', duration: 1400 }, { station: 'plate', duration: 700 }],
+  },
+  quesadilla: {
+    id: 'quesadilla', name: 'Quesadilla', emoji: '🫓', price: 18,
+    steps: [{ station: 'chop', duration: 1100 }, { station: 'cook', duration: 1600 }, { station: 'plate', duration: 700 }],
+  },
+  elote: {
+    id: 'elote', name: 'Elote', emoji: '🌽', price: 13,
+    steps: [{ station: 'cook', duration: 1300 }, { station: 'plate', duration: 900 }],
+  },
+  hamburguesa: {
+    id: 'hamburguesa', name: 'Hamburguesa', emoji: '🍔', price: 22,
+    steps: [{ station: 'chop', duration: 1000 }, { station: 'cook', duration: 1800 }, { station: 'plate', duration: 700 }],
+  },
+  papas: {
+    id: 'papas', name: 'Papas fritas', emoji: '🍟', price: 12,
+    steps: [{ station: 'cook', duration: 1400 }, { station: 'plate', duration: 500 }],
+  },
+  hotdog: {
+    id: 'hotdog', name: 'Hot dog', emoji: '🌭', price: 15,
+    steps: [{ station: 'cook', duration: 1200 }, { station: 'plate', duration: 600 }],
+  },
+  risotto: {
+    id: 'risotto', name: 'Risotto', emoji: '🍚', price: 30,
+    steps: [{ station: 'chop', duration: 1000 }, { station: 'cook', duration: 2000 }, { station: 'plate', duration: 900 }],
+  },
+  filete: {
+    id: 'filete', name: 'Filete gourmet', emoji: '🥩', price: 34,
+    steps: [{ station: 'chop', duration: 900 }, { station: 'cook', duration: 1900 }, { station: 'plate', duration: 900 }],
+  },
+  tartar: {
+    id: 'tartar', name: 'Tartar de atún', emoji: '🍣', price: 28,
+    steps: [{ station: 'chop', duration: 1400 }, { station: 'plate', duration: 900 }],
+  },
 };
 
 export const STATION_TYPES = [

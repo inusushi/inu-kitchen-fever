@@ -64,7 +64,8 @@ button {
 .btn:disabled { opacity: 0.4; cursor: default; }
 
 /* Menu */
-.menu-screen { justify-content: center; text-align: center; }
+.menu-screen { justify-content: center; text-align: center; position: relative; }
+.menu-screen .mute-btn { position: absolute; top: 12px; right: 12px; }
 .game-title { font-size: 44px; margin: 0; }
 .game-subtitle { color: var(--text-dim); margin: 8px 0 24px; }
 .coins-badge {
@@ -245,6 +246,65 @@ button {
 .station-name { font-size: 12px; color: var(--text-dim); }
 .station-bar { width: 100%; height: 6px; background: #00000055; border-radius: 4px; margin-top: 4px; overflow: hidden; }
 .station-bar-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.1s linear; }
+
+/* Combo + coin popup */
+.combo-badge {
+  background: linear-gradient(135deg, #ff6b6b, var(--accent-2));
+  color: #2a1a0a;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 800;
+  font-size: 13px;
+  animation: pop 0.25s ease;
+}
+.combo-badge.hidden { display: none; }
+@keyframes pop {
+  0% { transform: scale(0.6); }
+  100% { transform: scale(1); }
+}
+.coin-popup {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  color: var(--accent-2);
+  font-weight: 800;
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 50;
+  animation: float-up 0.9s ease forwards;
+}
+@keyframes float-up {
+  0% { opacity: 0; transform: translate(-50%, -50%) translateY(0); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateY(-46px); }
+}
+
+/* Cloud screen */
+.cloud-screen { text-align: center; }
+.cloud-note { color: var(--text-dim); max-width: 420px; margin: 8px 0 18px; }
+.sync-code-box {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 14px 20px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+.cloud-status { color: var(--text-dim); font-size: 13px; min-height: 18px; margin: 4px 0 10px; }
+.cloud-divider { color: var(--text-dim); font-size: 12px; margin: 20px 0 10px; }
+.sync-code-input {
+  background: var(--panel);
+  border: 1px solid var(--panel-2);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 10px 14px;
+  font-size: 16px;
+  text-align: center;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  width: 200px;
+  margin-bottom: 10px;
+}
 
 @media (max-width: 480px) {
   .game-title { font-size: 32px; }

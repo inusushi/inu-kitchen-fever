@@ -42,7 +42,11 @@ export class ShopScene {
       if (maxed || this.app.save.state.coins < cost) actionBtn.disabled = true;
       if (!maxed) {
         addTap(actionBtn, () => {
-          if (this.app.save.buyUpgrade(upgrade.id, cost)) this.render();
+          if (this.app.save.buyUpgrade(upgrade.id, cost)) {
+            this.app.audio.purchase();
+            this.app.cloud.scheduleAutoPush();
+            this.render();
+          }
         });
       }
 

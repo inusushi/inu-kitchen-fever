@@ -31,6 +31,7 @@ export class KitchenScene {
     this.coinsEarned = 0;
     this.served = 0;
     this.left = 0;
+    this.combo = 0;
     this.ended = false;
 
     this.customers = [];
@@ -52,9 +53,14 @@ export class KitchenScene {
         this.app.goTo(LevelSelectScene);
       }
     });
+    const muteBtn = el('button', 'btn btn-icon', this.app.audio.muted ? '🔇' : '🔊');
+    addTap(muteBtn, () => {
+      muteBtn.textContent = this.app.audio.toggleMute() ? '🔇' : '🔊';
+    });
+    this.comboEl = el('div', 'combo-badge hidden', '');
     this.coinsEl = el('div', 'coins-badge', `💰 ${this.coinsEarned}`);
     this.timerEl = el('div', 'timer-badge', formatTime(this.timeLeft));
-    header.append(backBtn, el('h2', 'top-bar-title', `${this.level.emoji} ${this.level.name}`), this.timerEl, this.coinsEl);
+    header.append(backBtn, el('h2', 'top-bar-title', `${this.level.emoji} ${this.level.name}`), this.comboEl, this.timerEl, this.coinsEl, muteBtn);
 
     this.customersRow = el('div', 'customers-row');
     this.slotsRow = el('div', 'slots-row');
@@ -179,6 +185,7 @@ export class KitchenScene {
     const duration = Math.max(300, plate.currentStep().duration * this.speedMultiplier);
     station.start(plate, duration);
     this.refreshSlot(slotIndex);
+    this.app.audio.tap();
   }
 
   onCustomerTap(customer) {
@@ -190,24 +197,49 @@ export class KitchenScene {
         view.node.classList.add('shake');
         setTimeout(() => view.node.classList.remove('shake'), 300);
       }
+      this.app.audio.mismatch();
       return;
     }
     const slot = this.slots[slotIndex];
     const tip = customer.patienceRatio() > 0.5 ? 1.25 : 1;
-    const coins = Math.round(slot.plate.recipe.price * tip * this.tipMultiplier);
+    const comboBonus = 1 + Math.min(this.combo, 5) * 0.05;
+    const coins = Math.round(slot.plate.recipe.price * tip * this.tipMultiplier * comboBonus);
     this.coinsEarned += coins;
     this.served += 1;
+    this.combo += 1;
     customer.state = 'served';
     slot.plate = null;
     this.refreshSlot(slotIndex);
+    this.spawnCoinPopup(this.customerViews.get(customer.id)?.node, coins);
     this.removeCustomer(customer);
     this.coinsEl.textContent = `💰 ${this.coinsEarned}`;
+    this.updateComboBadge();
+    this.app.audio.serve(this.combo >= 3);
+  }
+
+  spawnCoinPopup(referenceNode, coins) {
+    const rect = (referenceNode || this.customersRow).getBoundingClientRect();
+    const popup = el('div', 'coin-popup', `+💰${coins}`);
+    popup.style.left = `${rect.left + rect.width / 2}px`;
+    popup.style.top = `${rect.top}px`;
+    document.body.append(popup);
+    setTimeout(() => popup.remove(), 900);
+  }
+
+  updateComboBadge() {
+    if (this.combo >= 2) {
+      this.comboEl.textContent = `🔥 x${this.combo}`;
+      this.comboEl.classList.remove('hidden');
+    } else {
+      this.comboEl.classList.add('hidden');
+    }
   }
 
   spawnCustomer() {
     if (this.customers.length >= this.level.maxCustomers) return;
     const recipe = spawnOrderRecipe(this.level);
     const customer = new Customer(recipe, this.patienceMs);
+    customer.warnedLow = false;
     this.customers.push(customer);
 
     const node = el('div', 'customer');
@@ -249,12 +281,19 @@ export class KitchenScene {
         const ratio = customer.patienceRatio();
         view.fill.style.width = `${ratio * 100}%`;
         view.fill.classList.toggle('low', ratio < 0.3);
+        if (ratio < 0.3 && !customer.warnedLow) {
+          customer.warnedLow = true;
+          this.app.audio.patienceWarning();
+        }
       }
     });
 
     const departed = this.customers.filter((c) => c.state === 'left');
     departed.forEach((c) => {
       this.left += 1;
+      this.combo = 0;
+      this.updateComboBadge();
+      this.app.audio.customerLeft();
       this.removeCustomer(c);
     });
 
@@ -266,6 +305,7 @@ export class KitchenScene {
       if (finishedPlate) {
         const slotIndex = this.slots.findIndex((s) => s.plate === finishedPlate);
         if (slotIndex !== -1) this.refreshSlot(slotIndex);
+        this.app.audio.stepDone();
       }
     });
 
@@ -281,6 +321,7 @@ export class KitchenScene {
     if (this.coinsEarned >= goals[0]) stars = 1;
     if (this.coinsEarned >= goals[1]) stars = 2;
     if (this.coinsEarned >= goals[2]) stars = 3;
+    this.app.cloud.scheduleAutoPush();
     this.app.goTo(ResultScene, {
       levelIndex: this.levelIndex,
       coinsEarned: this.coinsEarned,

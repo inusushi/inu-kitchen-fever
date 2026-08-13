@@ -14,6 +14,9 @@ export class ResultScene {
     const level = LEVELS[levelIndex];
     this.app.save.addCoins(coinsEarned);
     this.app.save.registerLevelResult(levelIndex, stars);
+    if (stars > 0) this.app.audio.levelComplete(stars);
+    else this.app.audio.levelFailed();
+    this.app.cloud.scheduleAutoPush();
 
     const wrap = el('div', 'screen result-screen');
     wrap.append(el('div', 'result-emoji', stars > 0 ? '🎉' : '😕'));

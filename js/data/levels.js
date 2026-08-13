@@ -29,4 +29,22 @@ export const LEVELS = [
     duration: 100000, spawnInterval: [2600, 4000], patience: 11000,
     maxCustomers: 5, starGoals: [115, 185, 260],
   },
+  {
+    id: 'taqueria', name: 'Taquería', emoji: '🌮',
+    recipeIds: ['taco', 'quesadilla', 'elote'],
+    duration: 100000, spawnInterval: [2400, 3600], patience: 10500,
+    maxCustomers: 6, starGoals: [130, 210, 300],
+  },
+  {
+    id: 'comidaRapida', name: 'Comida Rápida', emoji: '🍔',
+    recipeIds: ['hamburguesa', 'papas', 'hotdog'],
+    duration: 105000, spawnInterval: [2200, 3400], patience: 10000,
+    maxCustomers: 6, starGoals: [150, 240, 340],
+  },
+  {
+    id: 'altaCocina', name: 'Alta Cocina', emoji: '🍽️',
+    recipeIds: ['risotto', 'filete', 'tartar'],
+    duration: 110000, spawnInterval: [2000, 3200], patience: 9500,
+    maxCustomers: 6, starGoals: [180, 280, 400],
+  },
 ];

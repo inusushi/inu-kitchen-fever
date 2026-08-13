@@ -6,6 +6,8 @@ function defaultState() {
     unlockedLevelIndex: 0,
     levelStars: {},
     upgrades: { speed: 0, slot: 0, patience: 0, tip: 0 },
+    settings: { muted: false },
+    syncCode: null,
   };
 }
 
@@ -19,7 +21,12 @@ export class SaveManager {
       const raw = localStorage.getItem(KEY);
       if (!raw) return defaultState();
       const parsed = JSON.parse(raw);
-      return { ...defaultState(), ...parsed, upgrades: { ...defaultState().upgrades, ...parsed.upgrades } };
+      return {
+        ...defaultState(),
+        ...parsed,
+        upgrades: { ...defaultState().upgrades, ...parsed.upgrades },
+        settings: { ...defaultState().settings, ...parsed.settings },
+      };
     } catch {
       return defaultState();
     }
@@ -65,4 +72,41 @@ export class SaveManager {
     this.state = defaultState();
     this.persist();
   }
+
+  getOrCreateSyncCode() {
+    if (!this.state.syncCode) {
+      this.state.syncCode = generateSyncCode();
+      this.persist();
+    }
+    return this.state.syncCode;
+  }
+
+  setSyncCode(code) {
+    this.state.syncCode = code;
+    this.persist();
+  }
+
+  replaceProgress(data) {
+    const defaults = defaultState();
+    this.state = {
+      ...defaults,
+      ...data,
+      upgrades: { ...defaults.upgrades, ...data.upgrades },
+      settings: { ...defaults.settings, ...data.settings },
+      syncCode: this.state.syncCode,
+    };
+    this.persist();
+  }
+}
+
+function generateSyncCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  let out = '';
+  for (let i = 0; i < 8; i++) {
+    if (i === 4) out += '-';
+    out += alphabet[bytes[i] % alphabet.length];
+  }
+  return out;
 }
