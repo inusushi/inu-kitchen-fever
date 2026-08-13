@@ -419,6 +419,29 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
 .station-name { font-size: 12px; color: var(--text-dim); }
 .station-bar { width: 100%; height: 6px; background: #00000055; border-radius: 4px; margin-top: 4px; overflow: hidden; }
 .station-bar-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.1s linear; }
+/* Barra roja: ya está cocido y se está por quemar */
+.station-bar-fill.burning { background: var(--bad); }
+
+/* Estación con platillo listo esperando que lo recojan */
+.station.pickup {
+  box-shadow: 0 0 0 2px var(--bad) inset, 0 0 16px rgba(255, 92, 92, 0.55);
+  animation: pickup-urgent 0.55s ease-in-out infinite;
+}
+@keyframes pickup-urgent {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+.plate-burn-hint { color: var(--bad); font-size: 12px; font-weight: 700; }
+.burnt-popup {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  color: var(--bad);
+  font-weight: 800;
+  font-size: 15px;
+  pointer-events: none;
+  z-index: 60;
+  animation: float-up 0.9s ease forwards;
+}
 
 /* Tutorial */
 .tutorial-bar {
@@ -514,6 +537,7 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
 @media (prefers-reduced-motion: reduce) {
   .customer.ready-to-serve,
   .customer.impatient,
+  .station.pickup,
   .tut-highlight,
   .station.busy .station-cook,
   .station.busy .station-emoji {

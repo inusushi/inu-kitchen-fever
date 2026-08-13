@@ -9,7 +9,7 @@ export const TUTORIAL_STEPS = [
   },
   {
     id: 'preparar',
-    text: '👆 Toca las estaciones que brillan, en orden, hasta que el platillo esté listo',
+    text: '👆 Toca las estaciones que brillan, en orden, hasta que el platillo esté listo. Ojo: lo que sale del fuego 🔥 hay que recogerlo tocándolo otra vez, o se quema.',
     target: 'station',
     advanceOn: 'plate-ready',
   },

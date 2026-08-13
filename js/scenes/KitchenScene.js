@@ -43,7 +43,10 @@ export class KitchenScene {
 
     this.customers = [];
     this.slots = Array.from({ length: this.slotCount }, () => ({ plate: null }));
-    this.stations = buildStationLayout(save.state.upgrades).map((s) => new Station(s.type, s.name, s.emoji));
+    this.stations = buildStationLayout(save.state.upgrades).map(
+      (s) => new Station(s.type, s.name, s.emoji, { burns: s.burns }),
+    );
+    this.burnt = 0;
     this.nextSpawnIn = 800;
 
     // El tutorial solo corre la primera vez, en el primer nivel.
@@ -233,11 +236,26 @@ export class KitchenScene {
       const waitHint = el('div', 'plate-wait-hint', 'Toca la estación indicada');
       view.node.append(waitHint);
     } else {
-      view.node.append(el('div', 'plate-wait-hint', 'Preparando…'));
+      const enFuego = this.stations.some((s) => s.waitingPickup && s.plate === plate);
+      view.node.append(
+        enFuego
+          ? el('div', 'plate-burn-hint', '🔥 ¡Recógelo o se quema!')
+          : el('div', 'plate-wait-hint', 'Preparando…'),
+      );
     }
   }
 
   onStationTap(station) {
+    // Recoger lo que ya está listo sobre el fuego, antes de que se queme.
+    if (station.waitingPickup) {
+      const plate = station.collect();
+      const slotIndex = this.slots.findIndex((s) => s.plate === plate);
+      if (slotIndex !== -1) this.refreshSlot(slotIndex);
+      this.app.audio.stepDone();
+      if (plate.state === 'ready') this.notifyTutorial('plate-ready');
+      return;
+    }
+
     if (station.busy) return;
     const slotIndex = this.slots.findIndex(
       (s) => s.plate && s.plate.state === 'prepping' && !s.plate.atStation && s.plate.currentStep().station === station.type,
@@ -310,6 +328,21 @@ export class KitchenScene {
     this.notifyTutorial('served');
   }
 
+  // Se quemó: se pierde el platillo y la mesa queda libre para rehacerlo.
+  onPlateBurnt(plate, stationNode) {
+    this.burnt += 1;
+    const slotIndex = this.slots.findIndex((s) => s.plate === plate);
+    if (slotIndex !== -1) {
+      this.slots[slotIndex].plate = null;
+      this.refreshSlot(slotIndex);
+    }
+    this.spawnFloatingText(stationNode, '💨 ¡Se quemó!', 'burnt-popup');
+    this.app.audio.customerLeft();
+    // Perder un platillo corta la racha: la prisa tiene costo.
+    this.combo = 0;
+    this.updateComboBadge();
+  }
+
   // Redibuja los platillos que el cliente todavía espera.
   refreshCustomerOrder(customer) {
     const view = this.customerViews.get(customer.id);
@@ -321,8 +354,12 @@ export class KitchenScene {
   }
 
   spawnCoinPopup(referenceNode, coins) {
+    this.spawnFloatingText(referenceNode, `+💰${coins}`, 'coin-popup');
+  }
+
+  spawnFloatingText(referenceNode, text, className) {
     const rect = (referenceNode || this.customersRow).getBoundingClientRect();
-    const popup = el('div', 'coin-popup', `+💰${coins}`);
+    const popup = el('div', className, text);
     popup.style.left = `${rect.left + rect.width / 2}px`;
     popup.style.top = `${rect.top}px`;
     document.body.append(popup);
@@ -466,16 +503,34 @@ export class KitchenScene {
     });
 
     this.stations.forEach((station, i) => {
-      const finishedPlate = station.update(dt);
+      const evento = station.update(dt);
       const view = this.stationViews[i];
-      view.fill.style.width = `${station.progressRatio() * 100}%`;
+      const esperando = station.waitingPickup;
+
+      view.fill.style.width = `${(esperando ? station.burnRatio() : station.progressRatio()) * 100}%`;
+      view.fill.classList.toggle('burning', esperando);
       view.node.classList.toggle('busy', station.busy);
-      if (finishedPlate) {
-        const slotIndex = this.slots.findIndex((s) => s.plate === finishedPlate);
+      view.node.classList.toggle('pickup', esperando);
+
+      if (!evento) return;
+
+      if (evento.type === 'advanced') {
+        const slotIndex = this.slots.findIndex((s) => s.plate === evento.plate);
         if (slotIndex !== -1) this.refreshSlot(slotIndex);
         this.app.audio.stepDone();
-        if (finishedPlate.state === 'ready') this.notifyTutorial('plate-ready');
+        if (evento.plate.state === 'ready') this.notifyTutorial('plate-ready');
+        return;
       }
+
+      if (evento.type === 'cooked') {
+        // Queda sobre el fuego esperando que lo recojan.
+        const slotIndex = this.slots.findIndex((s) => s.plate === evento.plate);
+        if (slotIndex !== -1) this.refreshSlot(slotIndex);
+        this.app.audio.patienceWarning();
+        return;
+      }
+
+      if (evento.type === 'burnt') this.onPlateBurnt(evento.plate, view.node);
     });
 
     this.updateTutorialHighlights();
@@ -496,6 +551,7 @@ export class KitchenScene {
       served: this.served,
       left: this.left,
       bestCombo: this.bestCombo,
+      burnt: this.burnt,
     });
   }
 

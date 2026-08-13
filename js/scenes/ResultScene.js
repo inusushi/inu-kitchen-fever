@@ -19,7 +19,7 @@ export class ResultScene {
   }
 
   mount(root) {
-    const { levelIndex, coinsEarned, stars, served, left, bestCombo = 0 } = this.params;
+    const { levelIndex, coinsEarned, stars, served, left, bestCombo = 0, burnt = 0 } = this.params;
     const result = { coinsEarned, served, left, bestCombo };
     this.app.save.addCoins(coinsEarned);
     this.app.save.registerLevelResult(levelIndex, stars);
@@ -47,6 +47,7 @@ export class ResultScene {
     wrap.append(el('div', 'result-stars', '⭐'.repeat(stars).padEnd(3, '☆')));
     wrap.append(el('div', 'result-line', `Platillos servidos: ${served}`));
     wrap.append(el('div', 'result-line', `Clientes perdidos: ${left}`));
+    if (burnt > 0) wrap.append(el('div', 'result-line', `Platillos quemados: ${burnt}`));
     if (bestCombo >= 2) wrap.append(el('div', 'result-line', `Mejor combo: 🔥 x${bestCombo}`));
     wrap.append(el('div', 'result-coins', `+💰 ${coinsEarned}`));
 

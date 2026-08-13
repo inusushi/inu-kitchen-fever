@@ -19,6 +19,8 @@ export function buildStationLayout(upgrades = {}) {
         emoji: base.emoji,
         // Solo numeramos cuando hay más de una del mismo tipo.
         name: count > 1 ? `${base.name} ${i + 1}` : base.name,
+        // Solo el fuego quema: cortar y emplatar no arruinan un platillo.
+        burns: base.type === 'cook',
       });
     }
   }
