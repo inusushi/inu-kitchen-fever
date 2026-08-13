@@ -1,0 +1,16 @@
+{
+  "name": "Inu Kitchen Fever",
+  "short_name": "Kitchen Fever",
+  "description": "El menú real de Inu Sushi convertido en juego: onigiri, bento, banderillas, rollos y Mushipan.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1b1520",
+  "theme_color": "#1b1520",
+  "categories": ["games", "food"],
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
