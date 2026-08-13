@@ -484,6 +484,35 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
   animation: pop 0.25s ease;
 }
 .combo-badge.hidden { display: none; }
+.rush-badge {
+  background: var(--bad);
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 800;
+  font-size: 12px;
+  white-space: nowrap;
+  animation: rush-blink 0.8s ease-in-out infinite;
+}
+.rush-badge.hidden { display: none; }
+@keyframes rush-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* Tipos de cliente */
+.customer { position: relative; }
+.customer-badge {
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  font-size: 14px;
+  filter: drop-shadow(0 1px 3px #000);
+  z-index: 2;
+}
+.customer.type-vip { box-shadow: 0 0 0 2px var(--accent-2); }
+.customer.type-apurado { box-shadow: 0 0 0 2px #7ec8ff; }
+.customer.type-grupo { box-shadow: 0 0 0 2px #b48cff; }
 @keyframes pop {
   0% { transform: scale(0.6); }
   100% { transform: scale(1); }
@@ -538,6 +567,7 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
   .customer.ready-to-serve,
   .customer.impatient,
   .station.pickup,
+  .rush-badge,
   .tut-highlight,
   .station.busy .station-cook,
   .station.busy .station-emoji {

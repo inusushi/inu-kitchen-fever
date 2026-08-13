@@ -1,6 +1,7 @@
 import { el, addTap, formatTime, randRange, pickRandom, dishVisual } from '../utils/helpers.js';
 import { CUSTOMER_FACES, moodFor, cookFor } from '../game/avatars.js';
 import { photoFor, backgroundFor } from '../data/photos.js';
+import { pickCustomerType, patienceForOrder, isRushHour, RUSH_SPAWN_FACTOR } from '../game/customerTypes.js';
 import { LEVELS } from '../data/levels.js';
 import { STATION_TYPES } from '../data/recipes.js';
 import { Customer } from '../game/Customer.js';
@@ -80,9 +81,10 @@ export class KitchenScene {
       muteBtn.textContent = this.app.audio.toggleMute() ? '🔇' : '🔊';
     });
     this.comboEl = el('div', 'combo-badge hidden', '');
+    this.rushEl = el('div', 'rush-badge hidden', '⚡ ¡HORA PICO!');
     this.coinsEl = el('div', 'coins-badge', `💰 ${this.coinsEarned}`);
     this.timerEl = el('div', 'timer-badge', formatTime(this.timeLeft));
-    header.append(backBtn, el('h2', 'top-bar-title', `${this.level.emoji} ${this.level.name}`), this.comboEl, this.timerEl, this.coinsEl, muteBtn);
+    header.append(backBtn, el('h2', 'top-bar-title', `${this.level.emoji} ${this.level.name}`), this.rushEl, this.comboEl, this.timerEl, this.coinsEl, muteBtn);
 
     this.customersRow = el('div', 'customers-row');
     this.slotsRow = el('div', 'slots-row');
@@ -300,7 +302,8 @@ export class KitchenScene {
     const customerNode = this.customerViews.get(customer.id)?.node;
 
     // Cada platillo se paga al entregarlo, así un pedido a medias no se pierde.
-    const coins = serveReward(recipe.price, customer.patienceRatio(), this.tipMultiplier, this.combo);
+    const pago = customer.type ? customer.type.payMultiplier : 1;
+    const coins = serveReward(recipe.price * pago, customer.patienceRatio(), this.tipMultiplier, this.combo);
     this.coinsEarned += coins;
     this.coinsEl.textContent = `💰 ${this.coinsEarned}`;
 
@@ -377,16 +380,28 @@ export class KitchenScene {
 
   spawnCustomer() {
     if (this.customers.length >= this.level.maxCustomers) return;
+    const tipo = pickCustomerType(this.level);
     const recipes = spawnOrder(this.level);
-    // Un pedido grande necesita más tiempo: si no, pedir 3 platillos sería
-    // imposible en la misma paciencia que pedir uno.
-    const patience = this.patienceMs * (1 + 0.6 * (recipes.length - 1));
+    // Los grupos piden de más sobre lo que ya trae el nivel.
+    for (let i = 0; i < tipo.extraDishes; i++) {
+      recipes.push(...spawnOrder({ ...this.level, orderSizes: [1] }));
+    }
+    // Los tipos impacientes no pueden cargar con pedidos enormes.
+    recipes.length = Math.min(recipes.length, tipo.maxOrderSize);
+
+    const patience = patienceForOrder(this.patienceMs, recipes.length, tipo);
     const customer = new Customer(recipes, patience);
+    customer.type = tipo;
     customer.warnedLow = false;
     this.customers.push(customer);
 
-    const node = el('div', 'customer');
+    const node = el('div', `customer type-${tipo.id}`);
     if (recipes.length > 1) node.classList.add('big-order');
+    if (tipo.badge) {
+      const badge = el('div', 'customer-badge', tipo.badge);
+      badge.title = tipo.label;
+      node.append(badge);
+    }
     const bubble = el('div', 'customer-order');
     recipes.forEach((r) => bubble.append(dishVisual(r, photoFor(r.id), 'dish-img')));
     customer.face = pickRandom(CUSTOMER_FACES);
@@ -446,10 +461,19 @@ export class KitchenScene {
       this.timerEl.textContent = formatTime(this.timeLeft);
       this.timerEl.classList.toggle('urgent', this.timeLeft < 10000);
 
+      // Hora pico: a media partida los clientes llegan más seguido.
+      const rush = isRushHour(this.timeLeft, this.level.duration);
+      if (rush !== this.rushActive) {
+        this.rushActive = rush;
+        this.rushEl.classList.toggle('hidden', !rush);
+        if (rush) this.app.audio.patienceWarning();
+      }
+
       this.nextSpawnIn -= dt;
       if (this.nextSpawnIn <= 0 && this.timeLeft > 4000) {
         this.spawnCustomer();
-        this.nextSpawnIn = randRange(this.level.spawnInterval[0], this.level.spawnInterval[1]);
+        const espera = randRange(this.level.spawnInterval[0], this.level.spawnInterval[1]);
+        this.nextSpawnIn = rush ? espera * RUSH_SPAWN_FACTOR : espera;
       }
     } else if (this.customers.length === 0) {
       // El tutorial necesita al menos un cliente para poder explicarse.
