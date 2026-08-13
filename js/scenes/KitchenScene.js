@@ -5,6 +5,7 @@ import { Customer } from '../game/Customer.js';
 import { Plate } from '../game/Plate.js';
 import { Station } from '../game/Station.js';
 import { spawnOrderRecipe } from '../game/Order.js';
+import { calculateStars } from '../game/scoring.js';
 import { LevelSelectScene } from './LevelSelectScene.js';
 import { ResultScene } from './ResultScene.js';
 
@@ -316,11 +317,7 @@ export class KitchenScene {
 
   finish() {
     this.ended = true;
-    const goals = this.level.starGoals;
-    let stars = 0;
-    if (this.coinsEarned >= goals[0]) stars = 1;
-    if (this.coinsEarned >= goals[1]) stars = 2;
-    if (this.coinsEarned >= goals[2]) stars = 3;
+    const stars = calculateStars(this.coinsEarned, this.level.starGoals);
     this.app.cloud.scheduleAutoPush();
     this.app.goTo(ResultScene, {
       levelIndex: this.levelIndex,

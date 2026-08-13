@@ -1,25 +1,40 @@
 export const LEVELS = [
   {
     id: 'onigiri', name: 'Onigiri', emoji: '🍙',
-    recipeIds: ['onigiriSalmon', 'onigiriCamaron', 'onigiriGreenRoll'],
+    recipeIds: [
+      'onigiriSalmon', 'onigiriCamaron', 'onigiriGreenRoll',
+      'onigiriCangrejo', 'onigiriPollo', 'onigiriLomoAtun',
+      'onigiriSalmonAhumado', 'onigiriFrutal',
+    ],
     duration: 75000, spawnInterval: [3400, 5000], patience: 14000,
     maxCustomers: 4, starGoals: [280, 460, 650],
   },
   {
     id: 'rollosFrescos', name: 'Rollos Frescos', emoji: '🍣',
-    recipeIds: ['californiaRoll', 'greenRoll', 'camaronTradicional'],
+    recipeIds: [
+      'californiaRoll', 'greenRoll', 'camaronTradicional',
+      'furutsuRoll', 'veggieRoll', 'salmonTradicional', 'atunTradicional',
+    ],
     duration: 80000, spawnInterval: [3200, 4700], patience: 13500,
     maxCustomers: 4, starGoals: [480, 800, 1100],
   },
   {
     id: 'bento', name: 'Bento', emoji: '🍱',
-    recipeIds: ['bentoCamaron', 'bentoPolloEmpanizado', 'bentoSalmonAhumado'],
+    recipeIds: [
+      'bentoCamaron', 'bentoPolloEmpanizado', 'bentoSalmonAhumado',
+      'bentoGreenRoll', 'bentoCangrejo', 'bentoLomoAtun',
+    ],
     duration: 88000, spawnInterval: [3000, 4400], patience: 13000,
     maxCustomers: 5, starGoals: [750, 1250, 1750],
   },
   {
     id: 'banderillas', name: 'Banderillas', emoji: '🍢',
-    recipeIds: ['banderillaCamaronAguacate', 'banderillaMarYTierra', 'banderillaDobleQueso'],
+    recipeIds: [
+      'banderillaCamaronAguacate', 'banderillaMarYTierra', 'banderillaDobleQueso',
+      'banderillaSurimiClasico', 'banderillaSurimiPlatanero', 'banderillaTropical',
+      'banderillaCamaronTocino', 'banderillaPolloManchego', 'banderillaBisteckClasico',
+      'banderillaArracheraPremium', 'banderillaFrutal',
+    ],
     duration: 92000, spawnInterval: [2800, 4200], patience: 12500,
     maxCustomers: 5, starGoals: [640, 1050, 1500],
   },
@@ -43,7 +58,11 @@ export const LEVELS = [
   },
   {
     id: 'mushipan', name: 'Mushipan', emoji: '🍞',
-    recipeIds: ['mushipanChocolateAbuelita', 'mushipanFrutosRojos', 'mushipanPizzaPepperoni'],
+    recipeIds: [
+      'mushipanChocolateAbuelita', 'mushipanFrutosRojos', 'mushipanPizzaPepperoni',
+      'mushipanChocobanana', 'mushipanNutella', 'mushipanOreo',
+      'mushipanPayLimon', 'mushipanCerdoTeriyaki',
+    ],
     duration: 105000, spawnInterval: [2000, 3100], patience: 9500,
     maxCustomers: 6, starGoals: [190, 310, 450],
   },
