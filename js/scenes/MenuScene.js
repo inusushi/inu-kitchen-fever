@@ -1,7 +1,8 @@
-import { el, addTap } from '../utils/helpers.js';
+import { el, addTap, linkButton } from '../utils/helpers.js';
 import { LevelSelectScene } from './LevelSelectScene.js';
 import { CloudScene } from './CloudScene.js';
 import { todayKey, dailyChallengeFor } from '../game/objectives.js';
+import { whatsappOrderUrl } from '../data/contact.js';
 
 export class MenuScene {
   constructor(app) {
@@ -48,6 +49,13 @@ export class MenuScene {
       this.app.goTo(LevelSelectScene);
     });
 
+    const orderBtn = linkButton(
+      'btn btn-order',
+      '🍣 Pide de verdad por WhatsApp',
+      whatsappOrderUrl('¡Hola Inu Sushi! 🍣 Jugué Inu Kitchen Fever y ya se me antojó — quiero pedir.'),
+    );
+    orderBtn.addEventListener('click', () => this.app.audio.tap());
+
     const cloudBtn = el('button', 'btn btn-secondary', '☁ Guardado en la nube');
     addTap(cloudBtn, () => this.app.goTo(CloudScene));
 
@@ -59,7 +67,7 @@ export class MenuScene {
       }
     });
 
-    wrap.append(muteBtn, logo, title, subtitle, coinsBadge, dailyCard, playBtn, cloudBtn, resetBtn);
+    wrap.append(muteBtn, logo, title, subtitle, coinsBadge, dailyCard, playBtn, orderBtn, cloudBtn, resetBtn);
     root.append(wrap);
   }
 

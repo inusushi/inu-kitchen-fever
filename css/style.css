@@ -57,6 +57,13 @@ button {
 .btn:active { transform: scale(0.96); }
 .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #2a1a0a; }
 .btn-secondary { background: var(--panel-2); border: 1px solid var(--accent); }
+.btn-order {
+  display: block;
+  background: #25d366;
+  color: #06210f;
+  text-align: center;
+  text-decoration: none;
+}
 .btn-ghost { background: transparent; color: var(--text-dim); }
 .btn-big { width: 100%; max-width: 320px; padding: 16px; font-size: 18px; }
 .btn-small { padding: 6px 12px; font-size: 13px; }

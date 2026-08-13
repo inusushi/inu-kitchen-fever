@@ -42,6 +42,18 @@ export function dishVisual(recipe, photoUrl, className) {
   return img;
 }
 
+// Un enlace que se ve y suena como los demás botones, para abrir WhatsApp
+// u otra URL externa (más confiable que window.open contra bloqueadores).
+export function linkButton(className, text, href) {
+  const a = document.createElement('a');
+  a.className = className;
+  a.textContent = text;
+  a.href = href;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  return a;
+}
+
 export function addTap(node, handler) {
   let handled = false;
   node.addEventListener('pointerdown', (e) => {

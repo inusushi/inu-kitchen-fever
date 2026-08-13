@@ -1,5 +1,6 @@
-import { el, addTap } from '../utils/helpers.js';
+import { el, addTap, linkButton } from '../utils/helpers.js';
 import { LEVELS } from '../data/levels.js';
+import { whatsappOrderUrl } from '../data/contact.js';
 import { LevelSelectScene } from './LevelSelectScene.js';
 import { KitchenScene } from './KitchenScene.js';
 import { LeaderboardScene } from './LeaderboardScene.js';
@@ -86,6 +87,17 @@ export class ResultScene {
     );
     if (daily.justCompleted) this.app.audio.purchase();
     wrap.append(dailyBox);
+
+    if (stars > 0) {
+      const level = LEVELS[levelIndex];
+      const orderBtn = linkButton(
+        'btn btn-order',
+        `🍣 Antójate y pide ${level.name} de verdad`,
+        whatsappOrderUrl(`¡Hola Inu Sushi! 🍣 Acabo de jugar el nivel de ${level.name} en Inu Kitchen Fever y quiero pedirlo de verdad.`),
+      );
+      orderBtn.addEventListener('click', () => this.app.audio.tap());
+      wrap.append(orderBtn);
+    }
 
     if (this.app.leaderboard.configured && stars > 0) {
       wrap.append(this.buildLeaderboardBox(levelIndex, coinsEarned, stars));
