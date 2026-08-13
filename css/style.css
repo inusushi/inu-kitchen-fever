@@ -247,7 +247,53 @@ button {
   75% { transform: translateX(4px); }
 }
 .customer-order { font-size: 22px; }
-.customer-face { font-size: 22px; }
+.customer-face { font-size: 26px; position: relative; line-height: 1.1; }
+.customer-mood {
+  position: absolute;
+  right: -6px;
+  bottom: -2px;
+  font-size: 14px;
+  filter: drop-shadow(0 1px 2px #000);
+}
+
+/* Entradas y salidas */
+.customer-enter { animation: customer-in 0.35s cubic-bezier(0.2, 1.2, 0.4, 1); }
+@keyframes customer-in {
+  from { opacity: 0; transform: translateX(28px) scale(0.85); }
+  to { opacity: 1; transform: none; }
+}
+.customer-served { animation: customer-out-happy 0.4s ease forwards; }
+@keyframes customer-out-happy {
+  0% { transform: none; opacity: 1; }
+  35% { transform: translateY(-10px) scale(1.08); }
+  100% { transform: translateY(-26px) scale(0.7); opacity: 0; }
+}
+.customer-left { animation: customer-out-angry 0.4s ease forwards; }
+@keyframes customer-out-angry {
+  0% { transform: none; opacity: 1; }
+  100% { transform: translateY(14px) rotate(-8deg) scale(0.8); opacity: 0; }
+}
+/* Se impacienta: tiembla poquito para llamar la atención */
+.customer.impatient { animation: impatient 0.5s ease-in-out infinite; }
+@keyframes impatient {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* Platillo que vuela de la mesa al cliente */
+.flying-dish {
+  position: fixed;
+  font-size: 26px;
+  pointer-events: none;
+  z-index: 60;
+  animation: fly-dish 0.5s cubic-bezier(0.3, -0.2, 0.5, 1) forwards;
+}
+@keyframes fly-dish {
+  0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1); opacity: 0; }
+}
 .patience-bar { width: 100%; height: 5px; background: #00000055; border-radius: 4px; margin-top: 4px; overflow: hidden; }
 .patience-bar-fill { height: 100%; background: var(--good); width: 100%; transition: width 0.1s linear; }
 .patience-bar-fill.low { background: var(--bad); }
@@ -314,7 +360,29 @@ button {
   gap: 4px;
 }
 .station.busy { background: var(--panel-2); box-shadow: 0 0 0 2px var(--accent) inset; }
-.station-emoji { font-size: 30px; }
+.station-emoji { font-size: 30px; transition: transform 0.15s ease; }
+/* El cocinero solo aparece cuando su estación está trabajando */
+.station-cook {
+  font-size: 20px;
+  height: 22px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.station.busy .station-cook {
+  opacity: 1;
+  transform: none;
+  animation: cook-working 0.45s ease-in-out infinite;
+}
+@keyframes cook-working {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-3px) rotate(4deg); }
+}
+.station.busy .station-emoji { animation: tool-working 0.45s ease-in-out infinite; }
+@keyframes tool-working {
+  0%, 100% { transform: rotate(-6deg) scale(1); }
+  50% { transform: rotate(6deg) scale(1.08); }
+}
 .station-name { font-size: 12px; color: var(--text-dim); }
 .station-bar { width: 100%; height: 6px; background: #00000055; border-radius: 4px; margin-top: 4px; overflow: hidden; }
 .station-bar-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.1s linear; }
@@ -406,6 +474,28 @@ button {
   text-transform: uppercase;
   width: 200px;
   margin-bottom: 10px;
+}
+
+/* Quien pide menos movimiento en su sistema no debería marearse jugando:
+   se quitan los bucles decorativos, pero se conserva el color y el estado. */
+@media (prefers-reduced-motion: reduce) {
+  .customer.ready-to-serve,
+  .customer.impatient,
+  .tut-highlight,
+  .station.busy .station-cook,
+  .station.busy .station-emoji {
+    animation: none;
+  }
+  .customer-enter,
+  .customer-served,
+  .customer-left,
+  .flying-dish,
+  .coin-popup,
+  .combo-badge {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
+  .station-cook { opacity: 1; transform: none; }
 }
 
 @media (max-width: 480px) {

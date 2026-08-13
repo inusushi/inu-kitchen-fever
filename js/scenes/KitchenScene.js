@@ -1,4 +1,5 @@
-import { el, addTap, formatTime, randRange, clamp } from '../utils/helpers.js';
+import { el, addTap, formatTime, randRange, pickRandom } from '../utils/helpers.js';
+import { CUSTOMER_FACES, moodFor, cookFor } from '../game/avatars.js';
 import { LEVELS } from '../data/levels.js';
 import { STATION_TYPES } from '../data/recipes.js';
 import { Customer } from '../game/Customer.js';
@@ -169,12 +170,13 @@ export class KitchenScene {
 
   buildStationView(station) {
     const node = el('button', 'station');
+    const cook = el('div', 'station-cook', cookFor(station.type));
     const emoji = el('div', 'station-emoji', station.emoji);
     const name = el('div', 'station-name', station.name);
     const bar = el('div', 'station-bar');
     const fill = el('div', 'station-bar-fill');
     bar.append(fill);
-    node.append(emoji, name, bar);
+    node.append(cook, emoji, name, bar);
     addTap(node, () => this.onStationTap(station));
     return { node, fill };
   }
@@ -270,10 +272,14 @@ export class KitchenScene {
     this.combo += 1;
     this.bestCombo = Math.max(this.bestCombo, this.combo);
     customer.state = 'served';
+
+    const customerNode = this.customerViews.get(customer.id)?.node;
+    this.flyDish(this.slotViews[readyIndex].node, customerNode, slot.plate.recipe.emoji);
+
     slot.plate = null;
     this.refreshSlot(readyIndex);
-    this.spawnCoinPopup(this.customerViews.get(customer.id)?.node, coins);
-    this.removeCustomer(customer);
+    this.spawnCoinPopup(customerNode, coins);
+    this.removeCustomer(customer, 'served');
     this.coinsEl.textContent = `💰 ${this.coinsEarned}`;
     this.updateComboBadge();
     this.app.audio.serve(this.combo >= 3);
@@ -307,22 +313,48 @@ export class KitchenScene {
 
     const node = el('div', 'customer');
     const bubble = el('div', 'customer-order', recipe.emoji);
-    const face = el('div', 'customer-face', '🧑');
+    customer.face = pickRandom(CUSTOMER_FACES);
+    const face = el('div', 'customer-face', customer.face);
+    const mood = el('div', 'customer-mood', moodFor(1).emoji);
+    face.append(mood);
     const bar = el('div', 'patience-bar');
     const fill = el('div', 'patience-bar-fill');
     bar.append(fill);
     const status = el('div', 'customer-status', '');
     node.append(bubble, face, bar, status);
     addTap(node, () => this.onCustomerTap(customer));
+    node.classList.add('customer-enter');
     this.customersRow.append(node);
-    this.customerViews.set(customer.id, { node, fill, status });
+    this.customerViews.set(customer.id, { node, fill, status, mood });
   }
 
-  removeCustomer(customer) {
+  // El cliente sale de la lógica de inmediato; su tarjeta se queda un
+  // momento más solo para terminar la animación de salida.
+  removeCustomer(customer, reason = 'left') {
     const view = this.customerViews.get(customer.id);
-    if (view) view.node.remove();
+    if (view) {
+      const { node } = view;
+      node.classList.remove('tut-highlight', 'ready-to-serve');
+      node.classList.add(reason === 'served' ? 'customer-served' : 'customer-left');
+      node.style.pointerEvents = 'none';
+      setTimeout(() => node.remove(), 420);
+    }
     this.customerViews.delete(customer.id);
     this.customers = this.customers.filter((c) => c.id !== customer.id);
+  }
+
+  // El platillo vuela de la mesa al cliente al servirlo.
+  flyDish(fromNode, toNode, emoji) {
+    if (!fromNode || !toNode) return;
+    const from = fromNode.getBoundingClientRect();
+    const to = toNode.getBoundingClientRect();
+    const dish = el('div', 'flying-dish', emoji);
+    dish.style.left = `${from.left + from.width / 2}px`;
+    dish.style.top = `${from.top + from.height / 2}px`;
+    dish.style.setProperty('--dx', `${to.left + to.width / 2 - (from.left + from.width / 2)}px`);
+    dish.style.setProperty('--dy', `${to.top + to.height / 2 - (from.top + from.height / 2)}px`);
+    document.body.append(dish);
+    setTimeout(() => dish.remove(), 500);
   }
 
   tick(dt) {
@@ -359,6 +391,10 @@ export class KitchenScene {
           this.app.audio.patienceWarning();
         }
 
+        const mood = moodFor(ratio);
+        if (view.mood.textContent !== mood.emoji) view.mood.textContent = mood.emoji;
+        view.node.classList.toggle('impatient', ratio < 0.2);
+
         const listo = this.slots.some(
           (s) => s.plate && s.plate.state === 'ready' && s.plate.recipe.id === customer.recipe.id,
         );
@@ -377,7 +413,7 @@ export class KitchenScene {
       this.combo = 0;
       this.updateComboBadge();
       this.app.audio.customerLeft();
-      this.removeCustomer(c);
+      this.removeCustomer(c, 'left');
     });
 
     this.stations.forEach((station, i) => {
