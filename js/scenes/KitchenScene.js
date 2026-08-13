@@ -1,11 +1,12 @@
 import { el, addTap, formatTime, randRange, clamp } from '../utils/helpers.js';
 import { LEVELS } from '../data/levels.js';
-import { RECIPES, STATION_TYPES } from '../data/recipes.js';
+import { STATION_TYPES } from '../data/recipes.js';
 import { Customer } from '../game/Customer.js';
 import { Plate } from '../game/Plate.js';
 import { Station } from '../game/Station.js';
 import { spawnOrderRecipe } from '../game/Order.js';
 import { calculateStars } from '../game/scoring.js';
+import { decideCustomerTap, serveReward } from '../game/interaction.js';
 import { LevelSelectScene } from './LevelSelectScene.js';
 import { ResultScene } from './ResultScene.js';
 
@@ -90,12 +91,10 @@ export class KitchenScene {
     });
   }
 
-  buildSlotView(index) {
+  buildSlotView() {
     const node = el('div', 'plate-slot empty');
-    const pickerBtn = el('button', 'slot-empty-hint', '+ Nuevo plato');
-    addTap(pickerBtn, () => this.openRecipePicker(index));
-    node.append(pickerBtn);
-    return { node, pickerBtn, recipeButtons: [] };
+    node.append(el('div', 'slot-empty-hint', 'Mesa libre'));
+    return { node };
   }
 
   buildStationView(station) {
@@ -110,35 +109,13 @@ export class KitchenScene {
     return { node, fill };
   }
 
-  openRecipePicker(slotIndex) {
-    const slot = this.slots[slotIndex];
-    const view = this.slotViews[slotIndex];
-    if (slot.plate) return;
-    view.node.innerHTML = '';
-    this.level.recipeIds.forEach((id) => {
-      const recipe = RECIPES[id];
-      const btn = el('button', 'recipe-pick-btn');
-      btn.append(el('div', 'recipe-pick-emoji', recipe.emoji), el('div', 'recipe-pick-name', recipe.name));
-      addTap(btn, () => {
-        slot.plate = new Plate(recipe);
-        this.refreshSlot(slotIndex);
-      });
-      view.node.append(btn);
-    });
-    const cancelBtn = el('button', 'btn btn-ghost btn-small', 'Cancelar');
-    addTap(cancelBtn, () => this.refreshSlot(slotIndex));
-    view.node.append(cancelBtn);
-  }
-
   refreshSlot(index) {
     const slot = this.slots[index];
     const view = this.slotViews[index];
     view.node.innerHTML = '';
     if (!slot.plate) {
       view.node.className = 'plate-slot empty';
-      const pickerBtn = el('button', 'slot-empty-hint', '+ Nuevo plato');
-      addTap(pickerBtn, () => this.openRecipePicker(index));
-      view.node.append(pickerBtn);
+      view.node.append(el('div', 'slot-empty-hint', 'Mesa libre'));
       return;
     }
 
@@ -189,28 +166,40 @@ export class KitchenScene {
     this.app.audio.tap();
   }
 
+  rejectCustomerTap(customer) {
+    const view = this.customerViews.get(customer.id);
+    if (view) {
+      view.node.classList.add('shake');
+      setTimeout(() => view.node.classList.remove('shake'), 300);
+    }
+    this.app.audio.mismatch();
+  }
+
   onCustomerTap(customer) {
-    if (customer.state !== 'waiting') return;
-    const slotIndex = this.slots.findIndex((s) => s.plate && s.plate.state === 'ready' && s.plate.recipe.id === customer.recipe.id);
-    if (slotIndex === -1) {
-      const view = this.customerViews.get(customer.id);
-      if (view) {
-        view.node.classList.add('shake');
-        setTimeout(() => view.node.classList.remove('shake'), 300);
-      }
-      this.app.audio.mismatch();
+    const decision = decideCustomerTap(customer, this.slots, this.customers);
+    if (decision.action === 'ignore') return;
+
+    if (decision.action === 'reject') {
+      this.rejectCustomerTap(customer);
       return;
     }
-    const slot = this.slots[slotIndex];
-    const tip = customer.patienceRatio() > 0.5 ? 1.25 : 1;
-    const comboBonus = 1 + Math.min(this.combo, 5) * 0.05;
-    const coins = Math.round(slot.plate.recipe.price * tip * this.tipMultiplier * comboBonus);
+
+    if (decision.action === 'start') {
+      this.slots[decision.slotIndex].plate = new Plate(customer.recipe);
+      this.refreshSlot(decision.slotIndex);
+      this.app.audio.tap();
+      return;
+    }
+
+    const readyIndex = decision.slotIndex;
+    const slot = this.slots[readyIndex];
+    const coins = serveReward(slot.plate.recipe.price, customer.patienceRatio(), this.tipMultiplier, this.combo);
     this.coinsEarned += coins;
     this.served += 1;
     this.combo += 1;
     customer.state = 'served';
     slot.plate = null;
-    this.refreshSlot(slotIndex);
+    this.refreshSlot(readyIndex);
     this.spawnCoinPopup(this.customerViews.get(customer.id)?.node, coins);
     this.removeCustomer(customer);
     this.coinsEl.textContent = `💰 ${this.coinsEarned}`;
@@ -249,10 +238,11 @@ export class KitchenScene {
     const bar = el('div', 'patience-bar');
     const fill = el('div', 'patience-bar-fill');
     bar.append(fill);
-    node.append(bubble, face, bar);
+    const status = el('div', 'customer-status', '');
+    node.append(bubble, face, bar, status);
     addTap(node, () => this.onCustomerTap(customer));
     this.customersRow.append(node);
-    this.customerViews.set(customer.id, { node, fill });
+    this.customerViews.set(customer.id, { node, fill, status });
   }
 
   removeCustomer(customer) {
@@ -286,6 +276,16 @@ export class KitchenScene {
           customer.warnedLow = true;
           this.app.audio.patienceWarning();
         }
+
+        const listo = this.slots.some(
+          (s) => s.plate && s.plate.state === 'ready' && s.plate.recipe.id === customer.recipe.id,
+        );
+        const preparando = this.slots.some(
+          (s) => s.plate && s.plate.state === 'prepping' && s.plate.recipe.id === customer.recipe.id,
+        );
+        view.node.classList.toggle('ready-to-serve', listo);
+        const texto = listo ? '¡Servir!' : preparando ? 'Preparando…' : 'Toca para pedir';
+        if (view.status.textContent !== texto) view.status.textContent = texto;
       }
     });
 

@@ -201,7 +201,7 @@ button {
   border: 2px solid transparent;
 }
 .plate-slot.ready { border-color: var(--good); }
-.slot-empty-hint { background: transparent; color: var(--text-dim); font-size: 14px; padding: 10px; }
+.slot-empty-hint { color: var(--text-dim); font-size: 13px; opacity: 0.6; }
 .plate-header { display: flex; align-items: center; gap: 6px; font-weight: 700; }
 .plate-emoji { font-size: 22px; }
 .plate-steps { display: flex; gap: 6px; }
@@ -211,18 +211,19 @@ button {
 .plate-ready-hint { color: var(--good); font-size: 12px; font-weight: 700; }
 .plate-wait-hint { color: var(--text-dim); font-size: 12px; }
 
-.recipe-pick-btn {
-  background: var(--panel-2);
-  border-radius: 10px;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  margin: 3px;
+/* El cliente es el control principal: se toca para pedir y para servir. */
+.customer { cursor: pointer; transition: transform 0.12s ease; }
+.customer:active { transform: scale(0.94); }
+.customer.ready-to-serve {
+  box-shadow: 0 0 0 2px var(--good), 0 0 14px rgba(79, 214, 122, 0.5);
+  animation: ready-pulse 1s ease-in-out infinite;
 }
-.recipe-pick-emoji { font-size: 22px; }
-.recipe-pick-name { font-size: 11px; color: var(--text-dim); }
+@keyframes ready-pulse {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.customer-status { font-size: 10px; color: var(--text-dim); margin-top: 2px; min-height: 12px; }
+.customer.ready-to-serve .customer-status { color: var(--good); font-weight: 700; }
 
 .stations-row {
   width: 100%;
