@@ -7,6 +7,7 @@ import { Station } from '../game/Station.js';
 import { spawnOrderRecipe } from '../game/Order.js';
 import { calculateStars } from '../game/scoring.js';
 import { decideCustomerTap, serveReward } from '../game/interaction.js';
+import { buildStationLayout } from '../game/stations.js';
 import { LevelSelectScene } from './LevelSelectScene.js';
 import { ResultScene } from './ResultScene.js';
 
@@ -38,7 +39,7 @@ export class KitchenScene {
 
     this.customers = [];
     this.slots = Array.from({ length: this.slotCount }, () => ({ plate: null }));
-    this.stations = STATION_TYPES.map((s) => new Station(s.type, s.name, s.emoji));
+    this.stations = buildStationLayout(save.state.upgrades).map((s) => new Station(s.type, s.name, s.emoji));
     this.nextSpawnIn = 800;
 
     this.buildDom(root);

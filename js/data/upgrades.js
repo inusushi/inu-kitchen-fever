@@ -19,6 +19,16 @@ export const UPGRADES = [
     desc: '+10% monedas ganadas por plato',
     baseCost: 70, costGrowth: 1.8, maxLevel: 3,
   },
+  {
+    id: 'extraChop', name: 'Segundo cuchillo', emoji: '🔪',
+    desc: '+1 estación de Preparar: corta dos platillos a la vez',
+    baseCost: 120, costGrowth: 2.4, maxLevel: 2,
+  },
+  {
+    id: 'extraCook', name: 'Segundo cocinero', emoji: '👨‍🍳',
+    desc: '+1 estación de Freír / Vapor: cocina dos platillos a la vez',
+    baseCost: 150, costGrowth: 2.4, maxLevel: 2,
+  },
 ];
 
 export function upgradeCost(upgrade, currentLevel) {

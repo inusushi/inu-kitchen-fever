@@ -5,7 +5,7 @@ function defaultState() {
     coins: 0,
     unlockedLevelIndex: 0,
     levelStars: {},
-    upgrades: { speed: 0, slot: 0, patience: 0, tip: 0 },
+    upgrades: { speed: 0, slot: 0, patience: 0, tip: 0, extraChop: 0, extraCook: 0 },
     settings: { muted: false },
     syncCode: null,
   };
