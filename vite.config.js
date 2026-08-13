@@ -25,7 +25,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg}'],
+        // Incluye las fotos: sin ellas el juego offline mostraría platillos rotos.
+        globPatterns: ['**/*.{js,css,html,svg,webp,png}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // Quien ya abrió el juego antes tiene un service worker viejo que le
         // serviría una versión pasada indefinidamente. Con esto el nuevo toma
         // el control en cuanto se instala y tira los cachés anteriores, sin

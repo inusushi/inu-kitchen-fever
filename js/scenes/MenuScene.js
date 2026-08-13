@@ -17,6 +17,12 @@ export class MenuScene {
       muteBtn.textContent = muted ? '🔇' : '🔊';
     });
 
+    const logo = document.createElement('img');
+    logo.className = 'menu-logo';
+    logo.src = 'fotos/logo-inu-sushi.png';
+    logo.alt = 'Inu Sushi';
+    logo.addEventListener('error', () => logo.remove(), { once: true });
+
     const title = el('h1', 'game-title', 'Inu Kitchen Fever');
     const subtitle = el('p', 'game-subtitle', 'El menú real de Inu Sushi: onigiri, rollos, bento, banderillas y Mushipan.');
 
@@ -53,7 +59,7 @@ export class MenuScene {
       }
     });
 
-    wrap.append(muteBtn, title, subtitle, coinsBadge, dailyCard, playBtn, cloudBtn, resetBtn);
+    wrap.append(muteBtn, logo, title, subtitle, coinsBadge, dailyCard, playBtn, cloudBtn, resetBtn);
     root.append(wrap);
   }
 

@@ -1,5 +1,6 @@
-import { el, addTap, formatTime, randRange, pickRandom } from '../utils/helpers.js';
+import { el, addTap, formatTime, randRange, pickRandom, dishVisual } from '../utils/helpers.js';
 import { CUSTOMER_FACES, moodFor, cookFor } from '../game/avatars.js';
+import { photoFor, backgroundFor } from '../data/photos.js';
 import { LEVELS } from '../data/levels.js';
 import { STATION_TYPES } from '../data/recipes.js';
 import { Customer } from '../game/Customer.js';
@@ -55,6 +56,14 @@ export class KitchenScene {
 
   buildDom(root) {
     const wrap = el('div', 'screen kitchen-screen');
+
+    // Fondo con la foto del tema, muy atenuado para no competir con el juego.
+    const bg = backgroundFor(this.level.id);
+    if (bg) {
+      const bgNode = el('div', 'kitchen-bg');
+      bgNode.style.backgroundImage = `url("${bg}")`;
+      wrap.append(bgNode);
+    }
 
     const header = el('div', 'top-bar');
     const backBtn = el('button', 'btn btn-icon', '←');
@@ -194,7 +203,10 @@ export class KitchenScene {
     const plate = slot.plate;
     view.node.className = `plate-slot${plate.state === 'ready' ? ' ready' : ''}`;
     const header = el('div', 'plate-header');
-    header.append(el('span', 'plate-emoji', plate.recipe.emoji), el('span', 'plate-name', plate.recipe.name));
+    header.append(
+      dishVisual(plate.recipe, photoFor(plate.recipe.id), 'plate-emoji dish-img'),
+      el('span', 'plate-name', plate.recipe.name),
+    );
     view.node.append(header);
 
     const stepsRow = el('div', 'plate-steps');
@@ -274,7 +286,7 @@ export class KitchenScene {
     customer.state = 'served';
 
     const customerNode = this.customerViews.get(customer.id)?.node;
-    this.flyDish(this.slotViews[readyIndex].node, customerNode, slot.plate.recipe.emoji);
+    this.flyDish(this.slotViews[readyIndex].node, customerNode, slot.plate.recipe);
 
     slot.plate = null;
     this.refreshSlot(readyIndex);
@@ -312,7 +324,8 @@ export class KitchenScene {
     this.customers.push(customer);
 
     const node = el('div', 'customer');
-    const bubble = el('div', 'customer-order', recipe.emoji);
+    const bubble = el('div', 'customer-order');
+    bubble.append(dishVisual(recipe, photoFor(recipe.id), 'dish-img'));
     customer.face = pickRandom(CUSTOMER_FACES);
     const face = el('div', 'customer-face', customer.face);
     const mood = el('div', 'customer-mood', moodFor(1).emoji);
@@ -344,11 +357,12 @@ export class KitchenScene {
   }
 
   // El platillo vuela de la mesa al cliente al servirlo.
-  flyDish(fromNode, toNode, emoji) {
+  flyDish(fromNode, toNode, recipe) {
     if (!fromNode || !toNode) return;
     const from = fromNode.getBoundingClientRect();
     const to = toNode.getBoundingClientRect();
-    const dish = el('div', 'flying-dish', emoji);
+    const dish = el('div', 'flying-dish');
+    dish.append(dishVisual(recipe, photoFor(recipe.id), 'dish-img'));
     dish.style.left = `${from.left + from.width / 2}px`;
     dish.style.top = `${from.top + from.height / 2}px`;
     dish.style.setProperty('--dx', `${to.left + to.width / 2 - (from.left + from.width / 2)}px`);

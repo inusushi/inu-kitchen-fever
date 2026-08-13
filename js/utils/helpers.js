@@ -28,6 +28,20 @@ export function el(tag, className, text) {
   return node;
 }
 
+// Muestra el platillo: foto real si la tiene, emoji si no. El emoji queda
+// además como respaldo si la imagen no carga.
+export function dishVisual(recipe, photoUrl, className) {
+  if (!photoUrl) return el('span', className, recipe.emoji);
+  const img = document.createElement('img');
+  img.className = className;
+  img.src = photoUrl;
+  img.alt = recipe.name;
+  // Sin lazy: son miniaturas y deben aparecer junto con el cliente, no después.
+  img.decoding = 'async';
+  img.addEventListener('error', () => img.replaceWith(el('span', className, recipe.emoji)), { once: true });
+  return img;
+}
+
 export function addTap(node, handler) {
   let handled = false;
   node.addEventListener('pointerdown', (e) => {
