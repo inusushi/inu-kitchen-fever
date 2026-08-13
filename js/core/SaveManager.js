@@ -10,6 +10,7 @@ function defaultState() {
     tutorialDone: false,
     levelObjectives: {},
     daily: { date: null, progress: 0, rewarded: false },
+    decorations: { owned: ['none'], equipped: 'none' },
     nickname: '',
     syncCode: null,
   };
@@ -31,6 +32,7 @@ export class SaveManager {
         upgrades: { ...defaultState().upgrades, ...parsed.upgrades },
         settings: { ...defaultState().settings, ...parsed.settings },
         daily: { ...defaultState().daily, ...parsed.daily },
+        decorations: { ...defaultState().decorations, ...parsed.decorations },
       };
     } catch {
       return defaultState();
@@ -116,6 +118,25 @@ export class SaveManager {
     this.persist();
   }
 
+  ownsDecoration(id) {
+    return this.state.decorations.owned.includes(id);
+  }
+
+  buyDecoration(id, cost) {
+    if (this.ownsDecoration(id)) return false;
+    if (!this.spendCoins(cost)) return false;
+    this.state.decorations.owned.push(id);
+    this.persist();
+    return true;
+  }
+
+  equipDecoration(id) {
+    if (!this.ownsDecoration(id)) return false;
+    this.state.decorations.equipped = id;
+    this.persist();
+    return true;
+  }
+
   buyUpgrade(id, cost) {
     if (!this.spendCoins(cost)) return false;
     this.state.upgrades[id] = (this.state.upgrades[id] || 0) + 1;
@@ -148,6 +169,7 @@ export class SaveManager {
       ...data,
       upgrades: { ...defaults.upgrades, ...data.upgrades },
       settings: { ...defaults.settings, ...data.settings },
+      decorations: { ...defaults.decorations, ...data.decorations },
       syncCode: this.state.syncCode,
     };
     this.persist();

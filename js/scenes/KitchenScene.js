@@ -12,6 +12,7 @@ import { calculateStars } from '../game/scoring.js';
 import { decideCustomerTap, serveReward } from '../game/interaction.js';
 import { buildStationLayout } from '../game/stations.js';
 import { TUTORIAL_STEPS, advanceTutorial, isTutorialFinished, tutorialFreezesClock } from '../game/tutorial.js';
+import { decorationById } from '../data/decorations.js';
 import { LevelSelectScene } from './LevelSelectScene.js';
 import { ResultScene } from './ResultScene.js';
 
@@ -33,6 +34,7 @@ export class KitchenScene {
     this.tipMultiplier = 1 + tipLevel * 0.1;
     this.patienceMs = this.level.patience * (1 + patienceLevel * 0.2);
     this.slotCount = 2 + slotLevel;
+    this.decor = decorationById(save.state.decorations.equipped);
 
     this.timeLeft = this.level.duration;
     this.coinsEarned = 0;
@@ -59,7 +61,7 @@ export class KitchenScene {
   }
 
   buildDom(root) {
-    const wrap = el('div', 'screen kitchen-screen');
+    const wrap = el('div', `screen kitchen-screen${this.decor.theme ? ' ' + this.decor.theme : ''}`);
 
     // Fondo con la foto del tema, muy atenuado para no competir con el juego.
     const bg = backgroundFor(this.level.id);
@@ -84,7 +86,13 @@ export class KitchenScene {
     this.rushEl = el('div', 'rush-badge hidden', '⚡ ¡HORA PICO!');
     this.coinsEl = el('div', 'coins-badge', `💰 ${this.coinsEarned}`);
     this.timerEl = el('div', 'timer-badge', formatTime(this.timeLeft));
-    header.append(backBtn, el('h2', 'top-bar-title', `${this.level.emoji} ${this.level.name}`), this.rushEl, this.comboEl, this.timerEl, this.coinsEl, muteBtn);
+    const title = el('h2', 'top-bar-title', `${this.level.emoji} ${this.level.name}`);
+    if (this.decor.id !== 'none') {
+      const badge = el('span', 'decor-badge', ` ${this.decor.emoji}`);
+      badge.title = this.decor.name;
+      title.append(badge);
+    }
+    header.append(backBtn, title, this.rushEl, this.comboEl, this.timerEl, this.coinsEl, muteBtn);
 
     this.customersRow = el('div', 'customers-row');
     this.slotsRow = el('div', 'slots-row');
@@ -303,7 +311,13 @@ export class KitchenScene {
 
     // Cada platillo se paga al entregarlo, así un pedido a medias no se pierde.
     const pago = customer.type ? customer.type.payMultiplier : 1;
-    const coins = serveReward(recipe.price * pago, customer.patienceRatio(), this.tipMultiplier, this.combo);
+    const coins = serveReward(
+      recipe.price * pago,
+      customer.patienceRatio(),
+      this.tipMultiplier,
+      this.combo,
+      this.decor.tipBonus,
+    );
     this.coinsEarned += coins;
     this.coinsEl.textContent = `💰 ${this.coinsEarned}`;
 

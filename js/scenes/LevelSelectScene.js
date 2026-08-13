@@ -4,6 +4,7 @@ import { MenuScene } from './MenuScene.js';
 import { ShopScene } from './ShopScene.js';
 import { KitchenScene } from './KitchenScene.js';
 import { LeaderboardScene } from './LeaderboardScene.js';
+import { DecorScene } from './DecorScene.js';
 
 export class LevelSelectScene {
   constructor(app) {
@@ -40,7 +41,10 @@ export class LevelSelectScene {
     const shopBtn = el('button', 'btn btn-secondary', '🛒 Tienda de mejoras');
     addTap(shopBtn, () => this.app.goTo(ShopScene));
 
-    wrap.append(header, list, shopBtn);
+    const decorBtn = el('button', 'btn btn-secondary', '🎨 Decorar cocina');
+    addTap(decorBtn, () => this.app.goTo(DecorScene));
+
+    wrap.append(header, list, shopBtn, decorBtn);
 
     if (this.app.leaderboard.configured) {
       const lbBtn = el('button', 'btn btn-secondary', '🏆 Mejores marcas');

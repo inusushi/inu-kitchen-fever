@@ -42,9 +42,10 @@ export function decideCustomerTap(customer, slots, customers) {
 }
 
 // Monedas que paga un platillo: precio base, propina por rapidez, mejora de
-// propina comprada en la tienda y bonus por combo (tope de 5 servicios).
-export function serveReward(recipePrice, patienceRatio, tipMultiplier, combo) {
+// propina comprada en la tienda, bonus por combo (tope de 5 servicios) y
+// una propina fija extra por la decoración equipada del local.
+export function serveReward(recipePrice, patienceRatio, tipMultiplier, combo, decorBonus = 0) {
   const tip = patienceRatio > 0.5 ? 1.25 : 1;
   const comboBonus = 1 + Math.min(combo, 5) * 0.05;
-  return Math.round(recipePrice * tip * tipMultiplier * comboBonus);
+  return Math.round(recipePrice * tip * tipMultiplier * comboBonus) + decorBonus;
 }

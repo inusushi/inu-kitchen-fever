@@ -131,12 +131,14 @@ button {
   display: flex;
   align-items: center;
   gap: 12px;
+  border: 1px solid transparent;
 }
 .upgrade-emoji { font-size: 30px; }
 .upgrade-info { flex: 1; }
 .upgrade-name { font-weight: 700; }
 .upgrade-desc { color: var(--text-dim); font-size: 13px; }
 .upgrade-level { color: var(--accent-2); font-size: 12px; margin-top: 2px; }
+.upgrade-card.equipped { border: 1px solid var(--good); }
 
 /* Result */
 .result-screen { justify-content: center; text-align: center; }
@@ -231,6 +233,14 @@ button {
 .flying-dish .dish-img { width: 40px; height: 40px; border-radius: 10px; box-shadow: 0 4px 14px #000a; }
 /* Cuando no hay foto, el emoji ocupa el lugar sin romper el renglón */
 span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
+
+/* Temas de decoración: solo reescriben el acento dentro de la cocina, así
+   no afectan menú, tienda ni el resto de la app. */
+.decor-badge { font-size: 16px; margin-left: 4px; }
+.kitchen-screen.theme-lanterns { --accent: #ff5a3d; --accent-2: #ffb23d; }
+.kitchen-screen.theme-sakura { --accent: #ff7fb0; --accent-2: #ffd1e6; }
+.kitchen-screen.theme-neon { --accent: #b84dff; --accent-2: #4de3ff; }
+.kitchen-screen.theme-koi { --accent: #ff8a3d; --accent-2: #3ec6ff; }
 
 /* Kitchen */
 .kitchen-screen { padding: 12px; position: relative; }
