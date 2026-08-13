@@ -36,6 +36,7 @@ export class KitchenScene {
     this.served = 0;
     this.left = 0;
     this.combo = 0;
+    this.bestCombo = 0;
     this.ended = false;
 
     this.customers = [];
@@ -267,6 +268,7 @@ export class KitchenScene {
     this.coinsEarned += coins;
     this.served += 1;
     this.combo += 1;
+    this.bestCombo = Math.max(this.bestCombo, this.combo);
     customer.state = 'served';
     slot.plate = null;
     this.refreshSlot(readyIndex);
@@ -408,6 +410,7 @@ export class KitchenScene {
       stars,
       served: this.served,
       left: this.left,
+      bestCombo: this.bestCombo,
     });
   }
 

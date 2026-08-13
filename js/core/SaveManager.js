@@ -8,6 +8,8 @@ function defaultState() {
     upgrades: { speed: 0, slot: 0, patience: 0, tip: 0, extraChop: 0, extraCook: 0 },
     settings: { muted: false },
     tutorialDone: false,
+    levelObjectives: {},
+    daily: { date: null, progress: 0, rewarded: false },
     syncCode: null,
   };
 }
@@ -27,6 +29,7 @@ export class SaveManager {
         ...parsed,
         upgrades: { ...defaultState().upgrades, ...parsed.upgrades },
         settings: { ...defaultState().settings, ...parsed.settings },
+        daily: { ...defaultState().daily, ...parsed.daily },
       };
     } catch {
       return defaultState();
@@ -60,6 +63,45 @@ export class SaveManager {
 
   upgradeLevel(id) {
     return this.state.upgrades[id] || 0;
+  }
+
+  // Guarda los objetivos recién cumplidos y devuelve solo los nuevos, para
+  // poder festejarlos sin repetir los de partidas anteriores.
+  recordObjectives(levelIndex, objectives) {
+    const already = this.state.levelObjectives[levelIndex] || [];
+    const fresh = objectives.filter((o) => o.done && !already.includes(o.id)).map((o) => o.id);
+    if (fresh.length) {
+      this.state.levelObjectives[levelIndex] = [...already, ...fresh];
+      this.persist();
+    }
+    return fresh;
+  }
+
+  objectivesDone(levelIndex) {
+    return this.state.levelObjectives[levelIndex] || [];
+  }
+
+  // Al cambiar el día, el progreso del reto se reinicia solo.
+  dailyState(dateKey) {
+    if (this.state.daily.date !== dateKey) {
+      this.state.daily = { date: dateKey, progress: 0, rewarded: false };
+      this.persist();
+    }
+    return this.state.daily;
+  }
+
+  // Devuelve { progress, justCompleted, reward } tras aplicar una partida.
+  applyDailyProgress(dateKey, challenge, newProgress) {
+    const daily = this.dailyState(dateKey);
+    daily.progress = newProgress;
+    let justCompleted = false;
+    if (!daily.rewarded && newProgress >= challenge.goal) {
+      daily.rewarded = true;
+      justCompleted = true;
+      this.state.coins += challenge.reward;
+    }
+    this.persist();
+    return { progress: daily.progress, justCompleted, reward: justCompleted ? challenge.reward : 0 };
   }
 
   markTutorialDone() {

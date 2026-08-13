@@ -2,6 +2,13 @@ import { el, addTap } from '../utils/helpers.js';
 import { LEVELS } from '../data/levels.js';
 import { LevelSelectScene } from './LevelSelectScene.js';
 import { KitchenScene } from './KitchenScene.js';
+import {
+  evaluateObjectives,
+  todayKey,
+  dailyChallengeFor,
+  dailyProgressFrom,
+  mergeDailyProgress,
+} from '../game/objectives.js';
 
 export class ResultScene {
   constructor(app, params) {
@@ -10,12 +17,26 @@ export class ResultScene {
   }
 
   mount(root) {
-    const { levelIndex, coinsEarned, stars, served, left } = this.params;
-    const level = LEVELS[levelIndex];
+    const { levelIndex, coinsEarned, stars, served, left, bestCombo = 0 } = this.params;
+    const result = { coinsEarned, served, left, bestCombo };
     this.app.save.addCoins(coinsEarned);
     this.app.save.registerLevelResult(levelIndex, stars);
     if (stars > 0) this.app.audio.levelComplete(stars);
     else this.app.audio.levelFailed();
+
+    const objectives = evaluateObjectives(result);
+    const nuevos = this.app.save.recordObjectives(levelIndex, objectives);
+
+    const dateKey = todayKey();
+    const challenge = dailyChallengeFor(dateKey);
+    const previo = this.app.save.dailyState(dateKey).progress;
+    const aporte = dailyProgressFrom(challenge, result);
+    const daily = this.app.save.applyDailyProgress(
+      dateKey,
+      challenge,
+      mergeDailyProgress(challenge, previo, aporte),
+    );
+
     this.app.cloud.scheduleAutoPush();
 
     const wrap = el('div', 'screen result-screen');
@@ -24,7 +45,44 @@ export class ResultScene {
     wrap.append(el('div', 'result-stars', '⭐'.repeat(stars).padEnd(3, '☆')));
     wrap.append(el('div', 'result-line', `Platillos servidos: ${served}`));
     wrap.append(el('div', 'result-line', `Clientes perdidos: ${left}`));
+    if (bestCombo >= 2) wrap.append(el('div', 'result-line', `Mejor combo: 🔥 x${bestCombo}`));
     wrap.append(el('div', 'result-coins', `+💰 ${coinsEarned}`));
+
+    // Objetivos del nivel
+    const objBox = el('div', 'objectives-box');
+    objBox.append(el('div', 'objectives-title', 'Objetivos del nivel'));
+    const yaLogrados = this.app.save.objectivesDone(levelIndex);
+    objectives.forEach((o) => {
+      const logrado = o.done || yaLogrados.includes(o.id);
+      const row = el('div', `objective-row${logrado ? ' done' : ''}`);
+      row.append(el('span', 'objective-check', logrado ? '✅' : '⬜'));
+      row.append(el('span', 'objective-label', o.label));
+      if (nuevos.includes(o.id)) row.append(el('span', 'objective-new', '¡NUEVO!'));
+      objBox.append(row);
+    });
+    wrap.append(objBox);
+
+    // Desafío diario
+    const dailyBox = el('div', 'daily-box');
+    dailyBox.append(el('div', 'objectives-title', '🗓️ Desafío de hoy'));
+    dailyBox.append(el('div', 'daily-label', challenge.label));
+    const pct = Math.min(100, (daily.progress / challenge.goal) * 100);
+    const dbar = el('div', 'daily-bar');
+    const dfill = el('div', 'daily-bar-fill');
+    dfill.style.width = `${pct}%`;
+    dbar.append(dfill);
+    dailyBox.append(dbar);
+    dailyBox.append(
+      el(
+        'div',
+        'daily-progress',
+        daily.justCompleted
+          ? `¡Completado! +💰 ${daily.reward}`
+          : `${Math.min(daily.progress, challenge.goal)} / ${challenge.goal}`,
+      ),
+    );
+    if (daily.justCompleted) this.app.audio.purchase();
+    wrap.append(dailyBox);
 
     const retryBtn = el('button', 'btn btn-primary btn-big', '🔁 Reintentar');
     addTap(retryBtn, () => this.app.goTo(KitchenScene, { levelIndex }));

@@ -1,6 +1,7 @@
 import { el, addTap } from '../utils/helpers.js';
 import { LevelSelectScene } from './LevelSelectScene.js';
 import { CloudScene } from './CloudScene.js';
+import { todayKey, dailyChallengeFor } from '../game/objectives.js';
 
 export class MenuScene {
   constructor(app) {
@@ -21,6 +22,20 @@ export class MenuScene {
 
     const coinsBadge = el('div', 'coins-badge', `💰 ${this.app.save.state.coins}`);
 
+    const dateKey = todayKey();
+    const challenge = dailyChallengeFor(dateKey);
+    const daily = this.app.save.dailyState(dateKey);
+    const dailyCard = el('div', 'daily-card');
+    dailyCard.append(el('div', 'daily-card-title', '🗓️ Desafío de hoy'));
+    dailyCard.append(el('div', 'daily-card-label', challenge.label));
+    dailyCard.append(
+      el(
+        'div',
+        'daily-card-progress',
+        daily.rewarded ? '✅ Completado' : `${Math.min(daily.progress, challenge.goal)} / ${challenge.goal} · 💰${challenge.reward}`,
+      ),
+    );
+
     const playBtn = el('button', 'btn btn-primary btn-big', '▶ Jugar');
     addTap(playBtn, () => {
       this.app.audio.tap();
@@ -38,7 +53,7 @@ export class MenuScene {
       }
     });
 
-    wrap.append(muteBtn, title, subtitle, coinsBadge, playBtn, cloudBtn, resetBtn);
+    wrap.append(muteBtn, title, subtitle, coinsBadge, dailyCard, playBtn, cloudBtn, resetBtn);
     root.append(wrap);
   }
 
