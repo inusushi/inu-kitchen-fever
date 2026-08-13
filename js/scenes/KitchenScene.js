@@ -8,6 +8,7 @@ import { spawnOrderRecipe } from '../game/Order.js';
 import { calculateStars } from '../game/scoring.js';
 import { decideCustomerTap, serveReward } from '../game/interaction.js';
 import { buildStationLayout } from '../game/stations.js';
+import { TUTORIAL_STEPS, advanceTutorial, isTutorialFinished, tutorialFreezesClock } from '../game/tutorial.js';
 import { LevelSelectScene } from './LevelSelectScene.js';
 import { ResultScene } from './ResultScene.js';
 
@@ -42,8 +43,12 @@ export class KitchenScene {
     this.stations = buildStationLayout(save.state.upgrades).map((s) => new Station(s.type, s.name, s.emoji));
     this.nextSpawnIn = 800;
 
+    // El tutorial solo corre la primera vez, en el primer nivel.
+    this.tutorialStep = !save.state.tutorialDone && this.levelIndex === 0 ? 0 : null;
+
     this.buildDom(root);
     this.renderStatic();
+    this.renderTutorial();
   }
 
   buildDom(root) {
@@ -73,9 +78,72 @@ export class KitchenScene {
     this.slotViews = [];
     this.stationViews = [];
 
-    wrap.append(header, this.customersRow, el('div', 'section-label', 'Mesas de preparación'), this.slotsRow, el('div', 'section-label', 'Estaciones'), this.stationsRow);
+    this.tutorialBar = el('div', 'tutorial-bar hidden');
+    this.tutorialText = el('span', 'tutorial-text', '');
+    this.tutorialSkip = el('button', 'btn btn-ghost btn-small', 'Saltar');
+    addTap(this.tutorialSkip, () => this.finishTutorial());
+    this.tutorialBar.append(this.tutorialText, this.tutorialSkip);
+
+    wrap.append(header, this.tutorialBar, this.customersRow, el('div', 'section-label', 'Mesas de preparación'), this.slotsRow, el('div', 'section-label', 'Estaciones'), this.stationsRow);
     root.append(wrap);
     this.wrap = wrap;
+  }
+
+  renderTutorial() {
+    if (this.tutorialStep === null) {
+      this.tutorialBar.classList.add('hidden');
+      return;
+    }
+    this.tutorialBar.classList.remove('hidden');
+    this.tutorialText.textContent = TUTORIAL_STEPS[this.tutorialStep].text;
+    this.tutorialSkip.textContent = isTutorialFinished(this.tutorialStep) ? '¡Vamos!' : 'Saltar';
+  }
+
+  // La cocina avisa al tutorial de lo que va logrando el jugador.
+  notifyTutorial(event) {
+    if (this.tutorialStep === null) return;
+    const next = advanceTutorial(this.tutorialStep, event);
+    if (next === null) return;
+    this.tutorialStep = next;
+    this.renderTutorial();
+    if (isTutorialFinished(this.tutorialStep)) {
+      this.app.save.markTutorialDone();
+      // El mensaje de cierre se quita solo; ya no hay nada que esperar.
+      this.tutorialTimeout = setTimeout(() => this.finishTutorial(), 4000);
+    }
+  }
+
+  finishTutorial() {
+    this.tutorialStep = null;
+    this.app.save.markTutorialDone();
+    this.clearTutorialHighlights();
+    this.renderTutorial();
+  }
+
+  clearTutorialHighlights() {
+    this.customerViews.forEach((v) => v.node.classList.remove('tut-highlight'));
+    this.stationViews.forEach((v) => v.node.classList.remove('tut-highlight'));
+  }
+
+  // Resalta lo que el jugador debe tocar en este paso.
+  updateTutorialHighlights() {
+    this.clearTutorialHighlights();
+    if (this.tutorialStep === null) return;
+    const { target } = TUTORIAL_STEPS[this.tutorialStep];
+
+    if (target === 'customer') {
+      const first = this.customers.find((c) => c.state === 'waiting');
+      if (first) this.customerViews.get(first.id)?.node.classList.add('tut-highlight');
+      return;
+    }
+
+    if (target === 'station') {
+      const plate = this.slots.find((s) => s.plate && s.plate.state === 'prepping' && !s.plate.atStation)?.plate;
+      if (!plate) return;
+      const needed = plate.currentStep().station;
+      const index = this.stations.findIndex((s) => s.type === needed && !s.busy);
+      if (index !== -1) this.stationViews[index].node.classList.add('tut-highlight');
+    }
   }
 
   renderStatic() {
@@ -189,6 +257,7 @@ export class KitchenScene {
       this.slots[decision.slotIndex].plate = new Plate(customer.recipe);
       this.refreshSlot(decision.slotIndex);
       this.app.audio.tap();
+      this.notifyTutorial('order-started');
       return;
     }
 
@@ -206,6 +275,7 @@ export class KitchenScene {
     this.coinsEl.textContent = `💰 ${this.coinsEarned}`;
     this.updateComboBadge();
     this.app.audio.serve(this.combo >= 3);
+    this.notifyTutorial('served');
   }
 
   spawnCoinPopup(referenceNode, coins) {
@@ -256,18 +326,27 @@ export class KitchenScene {
   tick(dt) {
     if (this.ended) return;
 
-    this.timeLeft -= dt;
-    this.timerEl.textContent = formatTime(this.timeLeft);
-    this.timerEl.classList.toggle('urgent', this.timeLeft < 10000);
+    // Durante el tutorial el reloj y la paciencia se congelan: nadie pierde
+    // por leer las instrucciones. Las estaciones sí siguen trabajando.
+    const congelado = this.tutorialStep !== null && tutorialFreezesClock(this.tutorialStep);
 
-    this.nextSpawnIn -= dt;
-    if (this.nextSpawnIn <= 0 && this.timeLeft > 4000) {
+    if (!congelado) {
+      this.timeLeft -= dt;
+      this.timerEl.textContent = formatTime(this.timeLeft);
+      this.timerEl.classList.toggle('urgent', this.timeLeft < 10000);
+
+      this.nextSpawnIn -= dt;
+      if (this.nextSpawnIn <= 0 && this.timeLeft > 4000) {
+        this.spawnCustomer();
+        this.nextSpawnIn = randRange(this.level.spawnInterval[0], this.level.spawnInterval[1]);
+      }
+    } else if (this.customers.length === 0) {
+      // El tutorial necesita al menos un cliente para poder explicarse.
       this.spawnCustomer();
-      this.nextSpawnIn = randRange(this.level.spawnInterval[0], this.level.spawnInterval[1]);
     }
 
     this.customers.forEach((customer) => {
-      customer.update(dt);
+      if (!congelado) customer.update(dt);
       const view = this.customerViews.get(customer.id);
       if (view) {
         const ratio = customer.patienceRatio();
@@ -308,8 +387,11 @@ export class KitchenScene {
         const slotIndex = this.slots.findIndex((s) => s.plate === finishedPlate);
         if (slotIndex !== -1) this.refreshSlot(slotIndex);
         this.app.audio.stepDone();
+        if (finishedPlate.state === 'ready') this.notifyTutorial('plate-ready');
       }
     });
+
+    this.updateTutorialHighlights();
 
     if (this.timeLeft <= 0) {
       this.finish();
@@ -329,5 +411,7 @@ export class KitchenScene {
     });
   }
 
-  unmount() {}
+  unmount() {
+    clearTimeout(this.tutorialTimeout);
+  }
 }

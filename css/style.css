@@ -248,6 +248,36 @@ button {
 .station-bar { width: 100%; height: 6px; background: #00000055; border-radius: 4px; margin-top: 4px; overflow: hidden; }
 .station-bar-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.1s linear; }
 
+/* Tutorial */
+.tutorial-bar {
+  width: 100%;
+  max-width: 700px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #2a1a0a;
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  animation: pop 0.25s ease;
+}
+.tutorial-bar.hidden { display: none; }
+.tutorial-text { flex: 1; }
+.tutorial-bar .btn-ghost { color: #2a1a0a; opacity: 0.75; flex-shrink: 0; }
+
+.tut-highlight {
+  box-shadow: 0 0 0 3px var(--accent-2), 0 0 18px rgba(255, 207, 92, 0.7);
+  animation: tut-bounce 0.9s ease-in-out infinite;
+  z-index: 2;
+}
+@keyframes tut-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
 /* Combo + coin popup */
 .combo-badge {
   background: linear-gradient(135deg, #ff6b6b, var(--accent-2));

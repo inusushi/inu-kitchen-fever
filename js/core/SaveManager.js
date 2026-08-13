@@ -7,6 +7,7 @@ function defaultState() {
     levelStars: {},
     upgrades: { speed: 0, slot: 0, patience: 0, tip: 0, extraChop: 0, extraCook: 0 },
     settings: { muted: false },
+    tutorialDone: false,
     syncCode: null,
   };
 }
@@ -59,6 +60,12 @@ export class SaveManager {
 
   upgradeLevel(id) {
     return this.state.upgrades[id] || 0;
+  }
+
+  markTutorialDone() {
+    if (this.state.tutorialDone) return;
+    this.state.tutorialDone = true;
+    this.persist();
   }
 
   buyUpgrade(id, cost) {
