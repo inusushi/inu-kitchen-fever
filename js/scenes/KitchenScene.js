@@ -6,7 +6,7 @@ import { STATION_TYPES } from '../data/recipes.js';
 import { Customer } from '../game/Customer.js';
 import { Plate } from '../game/Plate.js';
 import { Station } from '../game/Station.js';
-import { spawnOrderRecipe } from '../game/Order.js';
+import { spawnOrder } from '../game/Order.js';
 import { calculateStars } from '../game/scoring.js';
 import { decideCustomerTap, serveReward } from '../game/interaction.js';
 import { buildStationLayout } from '../game/stations.js';
@@ -269,7 +269,7 @@ export class KitchenScene {
     }
 
     if (decision.action === 'start') {
-      this.slots[decision.slotIndex].plate = new Plate(customer.recipe);
+      this.slots[decision.slotIndex].plate = new Plate(decision.recipe);
       this.refreshSlot(decision.slotIndex);
       this.app.audio.tap();
       this.notifyTutorial('order-started');
@@ -278,24 +278,46 @@ export class KitchenScene {
 
     const readyIndex = decision.slotIndex;
     const slot = this.slots[readyIndex];
-    const coins = serveReward(slot.plate.recipe.price, customer.patienceRatio(), this.tipMultiplier, this.combo);
+    const recipe = slot.plate.recipe;
+    const customerNode = this.customerViews.get(customer.id)?.node;
+
+    // Cada platillo se paga al entregarlo, así un pedido a medias no se pierde.
+    const coins = serveReward(recipe.price, customer.patienceRatio(), this.tipMultiplier, this.combo);
     this.coinsEarned += coins;
+    this.coinsEl.textContent = `💰 ${this.coinsEarned}`;
+
+    const completo = customer.deliver(recipe.id);
+    this.flyDish(this.slotViews[readyIndex].node, customerNode, recipe);
+    this.spawnCoinPopup(customerNode, coins);
+
+    slot.plate = null;
+    this.refreshSlot(readyIndex);
+
+    if (!completo) {
+      // Todavía le falta algo: se queda esperando el resto del pedido.
+      this.app.audio.stepDone();
+      this.refreshCustomerOrder(customer);
+      return;
+    }
+
     this.served += 1;
     this.combo += 1;
     this.bestCombo = Math.max(this.bestCombo, this.combo);
     customer.state = 'served';
-
-    const customerNode = this.customerViews.get(customer.id)?.node;
-    this.flyDish(this.slotViews[readyIndex].node, customerNode, slot.plate.recipe);
-
-    slot.plate = null;
-    this.refreshSlot(readyIndex);
-    this.spawnCoinPopup(customerNode, coins);
     this.removeCustomer(customer, 'served');
-    this.coinsEl.textContent = `💰 ${this.coinsEarned}`;
     this.updateComboBadge();
     this.app.audio.serve(this.combo >= 3);
     this.notifyTutorial('served');
+  }
+
+  // Redibuja los platillos que el cliente todavía espera.
+  refreshCustomerOrder(customer) {
+    const view = this.customerViews.get(customer.id);
+    if (!view) return;
+    view.order.innerHTML = '';
+    customer.pendingRecipes().forEach((r) => {
+      view.order.append(dishVisual(r, photoFor(r.id), 'dish-img'));
+    });
   }
 
   spawnCoinPopup(referenceNode, coins) {
@@ -318,14 +340,18 @@ export class KitchenScene {
 
   spawnCustomer() {
     if (this.customers.length >= this.level.maxCustomers) return;
-    const recipe = spawnOrderRecipe(this.level);
-    const customer = new Customer(recipe, this.patienceMs);
+    const recipes = spawnOrder(this.level);
+    // Un pedido grande necesita más tiempo: si no, pedir 3 platillos sería
+    // imposible en la misma paciencia que pedir uno.
+    const patience = this.patienceMs * (1 + 0.6 * (recipes.length - 1));
+    const customer = new Customer(recipes, patience);
     customer.warnedLow = false;
     this.customers.push(customer);
 
     const node = el('div', 'customer');
+    if (recipes.length > 1) node.classList.add('big-order');
     const bubble = el('div', 'customer-order');
-    bubble.append(dishVisual(recipe, photoFor(recipe.id), 'dish-img'));
+    recipes.forEach((r) => bubble.append(dishVisual(r, photoFor(r.id), 'dish-img')));
     customer.face = pickRandom(CUSTOMER_FACES);
     const face = el('div', 'customer-face', customer.face);
     const mood = el('div', 'customer-mood', moodFor(1).emoji);
@@ -338,7 +364,7 @@ export class KitchenScene {
     addTap(node, () => this.onCustomerTap(customer));
     node.classList.add('customer-enter');
     this.customersRow.append(node);
-    this.customerViews.set(customer.id, { node, fill, status, mood });
+    this.customerViews.set(customer.id, { node, fill, status, mood, order: bubble });
   }
 
   // El cliente sale de la lógica de inmediato; su tarjeta se queda un
@@ -409,14 +435,23 @@ export class KitchenScene {
         if (view.mood.textContent !== mood.emoji) view.mood.textContent = mood.emoji;
         view.node.classList.toggle('impatient', ratio < 0.2);
 
+        const pendientes = customer.pendingRecipes();
+        const pendingIds = new Set(pendientes.map((r) => r.id));
         const listo = this.slots.some(
-          (s) => s.plate && s.plate.state === 'ready' && s.plate.recipe.id === customer.recipe.id,
+          (s) => s.plate && s.plate.state === 'ready' && pendingIds.has(s.plate.recipe.id),
         );
         const preparando = this.slots.some(
-          (s) => s.plate && s.plate.state === 'prepping' && s.plate.recipe.id === customer.recipe.id,
+          (s) => s.plate && s.plate.state === 'prepping' && pendingIds.has(s.plate.recipe.id),
         );
         view.node.classList.toggle('ready-to-serve', listo);
-        const texto = listo ? '¡Servir!' : preparando ? 'Preparando…' : 'Toca para pedir';
+        const faltan = pendientes.length;
+        const texto = listo
+          ? '¡Servir!'
+          : preparando
+            ? 'Preparando…'
+            : faltan > 1
+              ? `Pide ${faltan}`
+              : 'Toca para pedir';
         if (view.status.textContent !== texto) view.status.textContent = texto;
       }
     });

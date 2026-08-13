@@ -3,9 +3,12 @@ import { clamp } from '../utils/helpers.js';
 let nextId = 1;
 
 export class Customer {
-  constructor(recipe, patienceMs) {
+  // Un cliente puede pedir varios platillos. Se guardan por índice (no por id)
+  // para que pedir dos veces lo mismo funcione sin ambigüedad.
+  constructor(recipes, patienceMs) {
     this.id = nextId++;
-    this.recipe = recipe;
+    this.recipes = Array.isArray(recipes) ? recipes : [recipes];
+    this.delivered = new Set();
     this.patienceMs = patienceMs;
     this.remaining = patienceMs;
     this.state = 'waiting'; // waiting | served | left
@@ -22,5 +25,26 @@ export class Customer {
 
   patienceRatio() {
     return clamp(this.remaining / this.patienceMs, 0, 1);
+  }
+
+  pendingRecipes() {
+    return this.recipes.filter((_, i) => !this.delivered.has(i));
+  }
+
+  // Marca como entregado el primer platillo pendiente que coincida.
+  // Devuelve true si quedó completo el pedido.
+  deliver(recipeId) {
+    const index = this.recipes.findIndex((r, i) => !this.delivered.has(i) && r.id === recipeId);
+    if (index === -1) return false;
+    this.delivered.add(index);
+    return this.isComplete();
+  }
+
+  isComplete() {
+    return this.delivered.size === this.recipes.length;
+  }
+
+  totalPrice() {
+    return this.recipes.reduce((sum, r) => sum + r.price, 0);
   }
 }
