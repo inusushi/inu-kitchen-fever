@@ -177,6 +177,45 @@ button {
 .daily-card-label { font-size: 14px; margin: 4px 0; }
 .daily-card-progress { font-size: 13px; font-weight: 700; color: var(--accent-2); }
 
+/* Ranking */
+.leaderboard-box {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 12px;
+  width: 100%;
+  max-width: 380px;
+  margin: 8px 0;
+}
+.lb-note { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+.nickname-input { width: 100%; letter-spacing: 0; text-transform: none; }
+
+.leaderboard-screen { text-align: center; }
+.lb-levels { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 6px; }
+.lb-level-btn {
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 20px;
+  opacity: 0.5;
+}
+.lb-level-btn.active { opacity: 1; box-shadow: 0 0 0 2px var(--accent); }
+.lb-level-name { font-weight: 700; margin-bottom: 12px; }
+.lb-list { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 6px; }
+.lb-row {
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.lb-row.podium { background: var(--panel-2); }
+.lb-pos { width: 28px; text-align: center; }
+.lb-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-stars { color: var(--accent-2); font-size: 11px; letter-spacing: -1px; }
+.lb-coins { font-weight: 700; color: var(--accent-2); }
+
 /* Kitchen */
 .kitchen-screen { padding: 12px; }
 .section-label { align-self: flex-start; color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 10px 4px 4px; }

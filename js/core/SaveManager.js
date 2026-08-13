@@ -10,6 +10,7 @@ function defaultState() {
     tutorialDone: false,
     levelObjectives: {},
     daily: { date: null, progress: 0, rewarded: false },
+    nickname: '',
     syncCode: null,
   };
 }
@@ -102,6 +103,11 @@ export class SaveManager {
     }
     this.persist();
     return { progress: daily.progress, justCompleted, reward: justCompleted ? challenge.reward : 0 };
+  }
+
+  setNickname(nickname) {
+    this.state.nickname = nickname;
+    this.persist();
   }
 
   markTutorialDone() {
