@@ -1,6 +1,7 @@
-import { el, addTap, formatTime, randRange, pickRandom, dishVisual } from '../utils/helpers.js';
-import { CUSTOMER_FACES, moodFor, cookFor } from '../game/avatars.js';
+import { el, addTap, formatTime, randRange, dishVisual } from '../utils/helpers.js';
+import { randomCustomerDesign, moodFor, cookFor } from '../game/avatars.js';
 import { photoFor, backgroundFor } from '../data/photos.js';
+import { equipmentFor } from '../game/equipment.js';
 import { pickCustomerType, patienceForOrder, isRushHour, RUSH_SPAWN_FACTOR } from '../game/customerTypes.js';
 import { LEVELS } from '../data/levels.js';
 import { STATION_TYPES } from '../data/recipes.js';
@@ -94,7 +95,14 @@ export class KitchenScene {
     }
     header.append(backBtn, title, this.rushEl, this.comboEl, this.timerEl, this.coinsEl, muteBtn);
 
+    const diningFloor = el('div', 'dining-floor');
+    const doorHint = el('div', 'floor-door', '🚪');
+    doorHint.title = 'Por aquí llegan los clientes';
+    const counter = el('div', 'order-counter');
+    counter.append(el('span', 'counter-bell', '🛎️'), el('span', 'counter-label', 'Barra de pedidos'));
     this.customersRow = el('div', 'customers-row');
+    diningFloor.append(doorHint, counter, this.customersRow);
+
     this.slotsRow = el('div', 'slots-row');
     this.stationsRow = el('div', 'stations-row');
 
@@ -108,7 +116,7 @@ export class KitchenScene {
     addTap(this.tutorialSkip, () => this.finishTutorial());
     this.tutorialBar.append(this.tutorialText, this.tutorialSkip);
 
-    wrap.append(header, this.tutorialBar, this.customersRow, el('div', 'section-label', 'Mesas de preparación'), this.slotsRow, el('div', 'section-label', 'Estaciones'), this.stationsRow);
+    wrap.append(header, this.tutorialBar, diningFloor, el('div', 'section-label', 'Mesas de preparación'), this.slotsRow, el('div', 'section-label', 'Estaciones'), this.stationsRow);
     root.append(wrap);
     this.wrap = wrap;
   }
@@ -191,14 +199,17 @@ export class KitchenScene {
   }
 
   buildStationView(station) {
-    const node = el('button', 'station');
+    const equipment = equipmentFor(this.level.id, station.type);
+    const node = el('button', `station ambient-${equipment.ambient}`);
+    const particles = el('div', 'station-particles');
+    for (let i = 0; i < 3; i++) particles.append(el('span', 'particle'));
     const cook = el('div', 'station-cook', cookFor(station.type));
-    const emoji = el('div', 'station-emoji', station.emoji);
+    const emoji = el('div', 'station-emoji', equipment.icon);
     const name = el('div', 'station-name', station.name);
     const bar = el('div', 'station-bar');
     const fill = el('div', 'station-bar-fill');
     bar.append(fill);
-    node.append(cook, emoji, name, bar);
+    node.append(particles, cook, emoji, name, bar);
     addTap(node, () => this.onStationTap(station));
     return { node, fill };
   }
@@ -418,17 +429,24 @@ export class KitchenScene {
     }
     const bubble = el('div', 'customer-order');
     recipes.forEach((r) => bubble.append(dishVisual(r, photoFor(r.id), 'dish-img')));
-    customer.face = pickRandom(CUSTOMER_FACES);
-    const face = el('div', 'customer-face', customer.face);
+
+    const design = randomCustomerDesign();
+    customer.face = design.face;
+    const sprite = el('div', 'customer-sprite');
+    const body = el('div', 'customer-body');
+    body.style.background = design.outfit;
+    const face = el('div', 'customer-face', design.face);
     const mood = el('div', 'customer-mood', moodFor(1).emoji);
     face.append(mood);
+    sprite.append(body, face);
+
     const bar = el('div', 'patience-bar');
     const fill = el('div', 'patience-bar-fill');
     bar.append(fill);
     const status = el('div', 'customer-status', '');
-    node.append(bubble, face, bar, status);
+    node.append(bubble, sprite, bar, status);
     addTap(node, () => this.onCustomerTap(customer));
-    node.classList.add('customer-enter');
+    node.classList.add('customer-walk-in');
     this.customersRow.append(node);
     this.customerViews.set(customer.id, { node, fill, status, mood, order: bubble });
   }

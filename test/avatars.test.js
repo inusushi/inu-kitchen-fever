@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CUSTOMER_FACES, moodFor, cookFor, COOK_AVATARS } from '../js/game/avatars.js';
+import { CUSTOMERS, CUSTOMER_FACES, randomCustomerDesign, moodFor, cookFor, COOK_AVATARS } from '../js/game/avatars.js';
 
 describe('moodFor', () => {
   it('is happy when the customer just arrived', () => {
@@ -37,5 +37,31 @@ describe('avatars', () => {
 
   it('falls back to a default cook for an unknown station', () => {
     expect(cookFor('inventada')).toBeTruthy();
+  });
+});
+
+describe('CUSTOMERS (diseño por cliente)', () => {
+  it('gives every design a face and an outfit color', () => {
+    for (const c of CUSTOMERS) {
+      expect(c.face).toBeTruthy();
+      expect(c.outfit).toMatch(/^#[0-9a-f]{6}$/i);
+    }
+  });
+
+  it('never repeats the same outfit color across designs', () => {
+    const colors = new Set(CUSTOMERS.map((c) => c.outfit));
+    expect(colors.size).toBe(CUSTOMERS.length);
+  });
+});
+
+describe('randomCustomerDesign', () => {
+  it('returns a real design from the roster', () => {
+    const design = randomCustomerDesign();
+    expect(CUSTOMERS).toContain(design);
+  });
+
+  it('respects an injected rng for deterministic picks', () => {
+    expect(randomCustomerDesign(() => 0)).toBe(CUSTOMERS[0]);
+    expect(randomCustomerDesign(() => 0.999)).toBe(CUSTOMERS[CUSTOMERS.length - 1]);
   });
 });
