@@ -235,7 +235,7 @@ button {
   display: block;
   background: var(--panel-2);
 }
-.customer-order .dish-img { width: 44px; height: 44px; }
+.order-dishes .dish-img { width: 34px; height: 34px; }
 .plate-header .dish-img { width: 34px; height: 34px; }
 .flying-dish .dish-img { width: 40px; height: 40px; border-radius: 10px; box-shadow: 0 4px 14px #000a; }
 /* Cuando no hay foto, el emoji ocupa el lugar sin romper el renglón */
@@ -273,6 +273,7 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
   width: 100%;
   max-width: 700px;
   position: relative;
+  z-index: 0;
   padding-top: 8px;
   min-height: 190px;
 }
@@ -312,6 +313,19 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
 }
 .counter-bell { font-size: 22px; }
 
+/* Mesas de fondo: solo ambientan el comedor, no son clickeables. */
+.floor-decor {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: flex-end;
+  padding-bottom: 4px;
+  pointer-events: none;
+  z-index: -1;
+}
+.floor-table { font-size: 26px; opacity: 0.16; filter: grayscale(0.4); }
+
 .customers-row {
   width: 100%;
   display: flex;
@@ -323,13 +337,12 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
 }
 .customer {
   position: relative;
-  background: var(--panel);
-  border-radius: var(--radius);
-  min-width: 64px;
-  padding: 8px 6px;
+  min-width: 74px;
+  padding: 2px 4px 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 2px;
   flex-shrink: 0;
 }
 .customer.shake { animation: shake 0.3s; }
@@ -338,11 +351,54 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
 }
-.customer-order { font-size: 22px; display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; }
+
+/* Globo de pedido: tarjeta con colita hacia el personaje, como en Cooking
+   Fever/World Chef — el platillo y el tiempo que queda viven juntos. */
+.order-bubble {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--panel-2);
+  border-radius: 10px;
+  padding: 6px 8px 6px 14px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 3px 8px #0006;
+}
+.order-bubble-tail {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid var(--panel);
+}
+.order-bubble-bar {
+  position: absolute;
+  left: 4px;
+  top: 5px;
+  bottom: 5px;
+  width: 5px;
+  border-radius: 3px;
+  background: #00000066;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+.order-bubble-bar-fill {
+  width: 100%;
+  height: 100%;
+  background: var(--good);
+  transition: height 0.1s linear;
+}
+.order-bubble-bar-fill.low { background: var(--bad); }
+.order-dishes { font-size: 20px; display: flex; gap: 3px; flex-wrap: wrap; max-width: 90px; justify-content: center; }
 /* Un pedido de varios platillos: se ven más chicos para que quepan */
-.customer.big-order { min-width: 84px; }
-.customer.big-order .dish-img { width: 30px; height: 30px; }
-.customer.big-order span.dish-img { width: auto; height: auto; font-size: 20px; }
+.customer.big-order .order-bubble { padding-left: 14px; }
+.customer.big-order .dish-img { width: 24px; height: 24px; }
+.customer.big-order span.dish-img { width: auto; height: auto; font-size: 17px; }
 
 /* El "personaje": un cuerpo de color (atuendo) con la cara encima. */
 .customer-sprite { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -418,10 +474,6 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
   20% { opacity: 1; }
   100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1); opacity: 0; }
 }
-.patience-bar { width: 100%; height: 5px; background: #00000055; border-radius: 4px; margin-top: 4px; overflow: hidden; }
-.patience-bar-fill { height: 100%; background: var(--good); width: 100%; transition: width 0.1s linear; }
-.patience-bar-fill.low { background: var(--bad); }
-
 .slots-row {
   width: 100%;
   max-width: 700px;

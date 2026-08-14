@@ -100,8 +100,11 @@ export class KitchenScene {
     doorHint.title = 'Por aquí llegan los clientes';
     const counter = el('div', 'order-counter');
     counter.append(el('span', 'counter-bell', '🛎️'), el('span', 'counter-label', 'Barra de pedidos'));
+    // Mesas de fondo: pura ambientación, no interactúan con el juego.
+    const floorDecor = el('div', 'floor-decor');
+    for (let i = 0; i < 4; i++) floorDecor.append(el('span', 'floor-table', '🍽️'));
     this.customersRow = el('div', 'customers-row');
-    diningFloor.append(doorHint, counter, this.customersRow);
+    diningFloor.append(doorHint, floorDecor, counter, this.customersRow);
 
     this.slotsRow = el('div', 'slots-row');
     this.stationsRow = el('div', 'stations-row');
@@ -427,8 +430,15 @@ export class KitchenScene {
       badge.title = tipo.label;
       node.append(badge);
     }
-    const bubble = el('div', 'customer-order');
-    recipes.forEach((r) => bubble.append(dishVisual(r, photoFor(r.id), 'dish-img')));
+    // Globo de pedido con su propia barra de tiempo vertical (como en Cooking
+    // Fever): el platillo y la urgencia viven juntos, no en dos lugares.
+    const bubble = el('div', 'order-bubble');
+    const bubbleBarTrack = el('div', 'order-bubble-bar');
+    const fill = el('div', 'order-bubble-bar-fill');
+    bubbleBarTrack.append(fill);
+    const dishes = el('div', 'order-dishes');
+    recipes.forEach((r) => dishes.append(dishVisual(r, photoFor(r.id), 'dish-img')));
+    bubble.append(bubbleBarTrack, dishes, el('div', 'order-bubble-tail'));
 
     const design = randomCustomerDesign();
     customer.face = design.face;
@@ -440,15 +450,12 @@ export class KitchenScene {
     face.append(mood);
     sprite.append(body, face);
 
-    const bar = el('div', 'patience-bar');
-    const fill = el('div', 'patience-bar-fill');
-    bar.append(fill);
     const status = el('div', 'customer-status', '');
-    node.append(bubble, sprite, bar, status);
+    node.append(bubble, sprite, status);
     addTap(node, () => this.onCustomerTap(customer));
     node.classList.add('customer-walk-in');
     this.customersRow.append(node);
-    this.customerViews.set(customer.id, { node, fill, status, mood, order: bubble });
+    this.customerViews.set(customer.id, { node, fill, status, mood, order: dishes });
   }
 
   // El cliente sale de la lógica de inmediato; su tarjeta se queda un
@@ -517,7 +524,7 @@ export class KitchenScene {
       const view = this.customerViews.get(customer.id);
       if (view) {
         const ratio = customer.patienceRatio();
-        view.fill.style.width = `${ratio * 100}%`;
+        view.fill.style.height = `${ratio * 100}%`;
         view.fill.classList.toggle('low', ratio < 0.3);
         if (ratio < 0.3 && !customer.warnedLow) {
           customer.warnedLow = true;
