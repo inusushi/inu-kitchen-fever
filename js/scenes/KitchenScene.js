@@ -465,9 +465,11 @@ export class KitchenScene {
     if (view) {
       const { node } = view;
       node.classList.remove('tut-highlight', 'ready-to-serve');
-      node.classList.add(reason === 'served' ? 'customer-served' : 'customer-left');
+      const served = reason === 'served';
+      node.classList.add(served ? 'customer-served' : 'customer-left');
       node.style.pointerEvents = 'none';
-      setTimeout(() => node.remove(), 420);
+      // Duración pareja con la animación CSS de cada salida (customer-out-happy / customer-out-angry).
+      setTimeout(() => node.remove(), served ? 420 : 1420);
     }
     this.customerViews.delete(customer.id);
     this.customers = this.customers.filter((c) => c.id !== customer.id);
