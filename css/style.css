@@ -273,42 +273,53 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
   width: 100%;
   max-width: 700px;
   position: relative;
-  padding-top: 4px;
+  padding-top: 8px;
+  min-height: 190px;
 }
 .floor-door {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  font-size: 20px;
-  opacity: 0.5;
-  filter: grayscale(0.3);
+  top: 0;
+  left: 4px;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  background: radial-gradient(circle, #00000055, transparent 70%);
+  border-radius: 50%;
+  opacity: 0.8;
+  z-index: 1;
 }
 .order-counter {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin: 0 auto 6px;
+  gap: 10px;
+  margin: 0 auto 14px;
   width: fit-content;
-  max-width: 90%;
+  max-width: 94%;
   background: linear-gradient(180deg, var(--panel-2), var(--panel));
-  border: 1px solid var(--accent);
+  border: 2px solid var(--accent);
   border-radius: 999px;
-  padding: 4px 16px;
-  font-size: 11px;
-  color: var(--text-dim);
+  padding: 10px 26px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
   text-transform: uppercase;
   letter-spacing: 1px;
+  box-shadow: 0 4px 16px #0006;
 }
-.counter-bell { font-size: 14px; }
+.counter-bell { font-size: 22px; }
 
 .customers-row {
   width: 100%;
   display: flex;
-  gap: 10px;
+  gap: 14px;
   overflow-x: auto;
-  padding: 6px 4px;
-  min-height: 110px;
+  overflow-y: visible;
+  padding: 10px 6px 6px;
+  min-height: 120px;
 }
 .customer {
   position: relative;
@@ -342,24 +353,37 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
   margin-top: -4px;
 }
 .customer-face { font-size: 26px; position: relative; line-height: 1.1; z-index: 1; }
+/* Insignia de humor: círculo aparte arriba a la derecha, para que no se
+   confunda con una segunda cara pegada a la principal. */
 .customer-mood {
   position: absolute;
-  right: -6px;
-  bottom: -2px;
+  top: -8px;
+  right: -10px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 14px;
-  filter: drop-shadow(0 1px 2px #000);
+  background: var(--panel);
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  box-shadow: 0 2px 4px #0007;
 }
 
 /* Caminata de entrada: viene de la puerta (arriba-izquierda) hasta su
    lugar en la fila, con un rebote de pasos en vez de solo deslizarse. */
-.customer-walk-in { animation: walk-in 0.9s cubic-bezier(0.25, 0.7, 0.3, 1); }
+.customer-walk-in { animation: walk-in 1.6s cubic-bezier(0.22, 0.6, 0.3, 1); }
 @keyframes walk-in {
-  0% { opacity: 0; transform: translate(-160px, -46px) scale(0.8); }
-  15% { opacity: 1; }
-  30% { transform: translate(-110px, -30px) translateY(-3px) scale(0.85); }
-  45% { transform: translate(-75px, -20px) translateY(0) scale(0.88); }
-  60% { transform: translate(-45px, -11px) translateY(-3px) scale(0.92); }
-  75% { transform: translate(-20px, -4px) translateY(0) scale(0.96); }
+  0% { opacity: 0; transform: translate(-260px, -90px) scale(0.7); }
+  10% { opacity: 1; }
+  20% { transform: translate(-215px, -60px) translateY(-6px) scale(0.76); }
+  32% { transform: translate(-170px, -40px) translateY(0) scale(0.8); }
+  44% { transform: translate(-125px, -26px) translateY(-6px) scale(0.85); }
+  56% { transform: translate(-85px, -16px) translateY(0) scale(0.89); }
+  68% { transform: translate(-50px, -8px) translateY(-5px) scale(0.93); }
+  80% { transform: translate(-22px, -3px) translateY(0) scale(0.97); }
+  92% { transform: translate(-6px, 0) translateY(-2px) scale(0.99); }
   100% { opacity: 1; transform: translate(0, 0) scale(1); }
 }
 .customer-served { animation: customer-out-happy 0.4s ease forwards; }
@@ -452,6 +476,7 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
 }
 .station {
   position: relative;
+  z-index: 0;
   overflow: hidden;
   background: var(--panel);
   border-radius: var(--radius);
@@ -466,45 +491,46 @@ span.dish-img { width: auto; height: auto; background: none; font-size: 26px; }
 
 /* Equipo de cocina ambiental: vapor o flama, siempre presentes de fondo,
    más intensos mientras la estación está en uso. */
-.station-particles { position: absolute; inset: 0; pointer-events: none; z-index: -1; }
+.station-particles { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
 .ambient-flame .particle {
   position: absolute;
-  bottom: 6px;
-  width: 6px;
-  height: 10px;
-  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-  background: radial-gradient(circle, #ffd27a, var(--accent) 70%, transparent);
-  opacity: 0.35;
+  bottom: 4px;
+  width: 12px;
+  height: 20px;
+  border-radius: 50% 50% 50% 50% / 65% 65% 35% 35%;
+  background: radial-gradient(circle at 50% 70%, #fff3b0, #ffd27a 45%, var(--accent) 80%, transparent);
+  opacity: 0.65;
+  filter: drop-shadow(0 0 6px var(--accent));
   animation: flame-flicker 0.7s ease-in-out infinite;
 }
-.ambient-flame .particle:nth-child(1) { left: 30%; animation-delay: 0s; }
-.ambient-flame .particle:nth-child(2) { left: 50%; height: 14px; animation-delay: 0.15s; }
+.ambient-flame .particle:nth-child(1) { left: 26%; animation-delay: 0s; }
+.ambient-flame .particle:nth-child(2) { left: 48%; height: 26px; width: 15px; animation-delay: 0.15s; }
 .ambient-flame .particle:nth-child(3) { left: 68%; animation-delay: 0.3s; }
-.ambient-flame.busy .particle { opacity: 0.75; }
+.ambient-flame.busy .particle { opacity: 1; filter: drop-shadow(0 0 10px var(--accent)); }
 @keyframes flame-flicker {
-  0%, 100% { transform: scaleY(1) translateY(0); opacity: 0.5; }
-  50% { transform: scaleY(1.3) translateY(-3px); opacity: 0.9; }
+  0%, 100% { transform: scaleY(1) translateY(0); opacity: 0.7; }
+  50% { transform: scaleY(1.35) translateY(-4px); opacity: 1; }
 }
 
 .ambient-steam .particle {
   position: absolute;
-  bottom: 18px;
+  bottom: 16px;
   left: 50%;
-  width: 8px;
-  height: 8px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: #fff;
+  background: radial-gradient(circle, #fff, #ffffffaa 60%, transparent 80%);
   opacity: 0;
   animation: steam-rise 2.2s ease-in infinite;
 }
-.ambient-steam .particle:nth-child(1) { margin-left: -14px; animation-delay: 0s; }
-.ambient-steam .particle:nth-child(2) { margin-left: 0px; animation-delay: 0.7s; }
-.ambient-steam .particle:nth-child(3) { margin-left: 12px; animation-delay: 1.4s; }
+.ambient-steam .particle:nth-child(1) { margin-left: -20px; animation-delay: 0s; }
+.ambient-steam .particle:nth-child(2) { margin-left: 0px; width: 20px; height: 20px; animation-delay: 0.7s; }
+.ambient-steam .particle:nth-child(3) { margin-left: 18px; animation-delay: 1.4s; }
 .ambient-steam.busy .particle { animation-duration: 1.1s; }
 @keyframes steam-rise {
   0% { transform: translateY(0) scale(0.6); opacity: 0; }
-  25% { opacity: 0.55; }
-  100% { transform: translateY(-38px) scale(1.4); opacity: 0; }
+  25% { opacity: 0.9; }
+  100% { transform: translateY(-42px) scale(1.6); opacity: 0; }
 }
 /* El cocinero solo aparece cuando su estación está trabajando */
 .station-cook {
