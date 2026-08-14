@@ -81,4 +81,24 @@ export class AudioManager {
     this._tone(500, 0.06, { type: 'sine', gain: 0.14 });
     this._tone(750, 0.1, { type: 'sine', gain: 0.14, delay: 0.06 });
   }
+
+  // Música ambiental: un vaivén corto en marimba, muy bajo de volumen, para
+  // no competir con los efectos. Se apoya en _tone(), así que ya respeta el
+  // silencio sin lógica extra — si está muteado, cada nota simplemente no suena.
+  startMusic() {
+    if (this.musicTimer) return;
+    const MELODY = [523, 659, 784, 659, 587, 698, 880, 698];
+    const STEP_MS = 380;
+    let step = 0;
+    this.musicTimer = setInterval(() => {
+      this._tone(MELODY[step % MELODY.length], 0.32, { type: 'triangle', gain: 0.045 });
+      if (step % 4 === 0) this._tone(MELODY[step % MELODY.length] / 2, 0.5, { type: 'sine', gain: 0.035 });
+      step++;
+    }, STEP_MS);
+  }
+
+  stopMusic() {
+    clearInterval(this.musicTimer);
+    this.musicTimer = null;
+  }
 }

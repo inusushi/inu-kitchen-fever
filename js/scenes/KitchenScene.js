@@ -14,6 +14,8 @@ import { decideCustomerTap, serveReward } from '../game/interaction.js';
 import { buildStationLayout } from '../game/stations.js';
 import { TUTORIAL_STEPS, advanceTutorial, isTutorialFinished, tutorialFreezesClock } from '../game/tutorial.js';
 import { decorationById } from '../data/decorations.js';
+import { activeEventFor } from '../data/events.js';
+import { todayKey } from '../game/objectives.js';
 import { LevelSelectScene } from './LevelSelectScene.js';
 import { ResultScene } from './ResultScene.js';
 
@@ -31,8 +33,9 @@ export class KitchenScene {
     const patienceLevel = save.upgradeLevel('patience');
     const tipLevel = save.upgradeLevel('tip');
 
+    this.event = activeEventFor(todayKey());
     this.speedMultiplier = 1 - speedLevel * 0.1;
-    this.tipMultiplier = 1 + tipLevel * 0.1;
+    this.tipMultiplier = (1 + tipLevel * 0.1) * (this.event ? this.event.coinMultiplier : 1);
     this.patienceMs = this.level.patience * (1 + patienceLevel * 0.2);
     this.slotCount = 2 + slotLevel;
     this.decor = decorationById(save.state.decorations.equipped);
@@ -93,7 +96,13 @@ export class KitchenScene {
       badge.title = this.decor.name;
       title.append(badge);
     }
-    header.append(backBtn, title, this.rushEl, this.comboEl, this.timerEl, this.coinsEl, muteBtn);
+    header.append(backBtn, title);
+    if (this.event) {
+      const eventEl = el('div', 'event-badge', `${this.event.emoji} +${Math.round((this.event.coinMultiplier - 1) * 100)}%`);
+      eventEl.title = this.event.message;
+      header.append(eventEl);
+    }
+    header.append(this.rushEl, this.comboEl, this.timerEl, this.coinsEl, muteBtn);
 
     const diningFloor = el('div', 'dining-floor');
     const doorHint = el('div', 'floor-door', '🚪');

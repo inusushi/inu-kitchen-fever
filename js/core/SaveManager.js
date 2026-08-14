@@ -6,12 +6,13 @@ function defaultState() {
     unlockedLevelIndex: 0,
     levelStars: {},
     upgrades: { speed: 0, slot: 0, patience: 0, tip: 0, extraChop: 0, extraCook: 0 },
-    settings: { muted: false },
+    settings: { muted: false, colorblind: false, largeText: false },
     tutorialDone: false,
     levelObjectives: {},
     daily: { date: null, progress: 0, rewarded: false },
     decorations: { owned: ['none'], equipped: 'none' },
     coupon: { code: null, unlockedAt: null },
+    streak: { lastDate: null, current: 0 },
     nickname: '',
     syncCode: null,
   };
@@ -35,6 +36,7 @@ export class SaveManager {
         daily: { ...defaultState().daily, ...parsed.daily },
         decorations: { ...defaultState().decorations, ...parsed.decorations },
         coupon: { ...defaultState().coupon, ...parsed.coupon },
+        streak: { ...defaultState().streak, ...parsed.streak },
       };
     } catch {
       return defaultState();
@@ -107,6 +109,24 @@ export class SaveManager {
     }
     this.persist();
     return { progress: daily.progress, justCompleted, reward: justCompleted ? challenge.reward : 0 };
+  }
+
+  // Se llama una vez al entrar al menú. Aplica el avance de racha y, si
+  // corresponde, paga la recompensa del día.
+  applyDailyStreak(applyFn, dateKey) {
+    const result = applyFn(this.state.streak, dateKey);
+    if (result.isNewDay) {
+      this.state.streak = result.streak;
+      if (result.rewarded) this.state.coins += result.reward;
+      this.persist();
+    }
+    return result;
+  }
+
+  toggleSetting(key) {
+    this.state.settings[key] = !this.state.settings[key];
+    this.persist();
+    return this.state.settings[key];
   }
 
   setNickname(nickname) {
