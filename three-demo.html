@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inu Kitchen Fever — Prueba de clientes en 3D (Three.js)</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #1b1520; color: #f5eee6; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 2;
+      padding: 16px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      background: linear-gradient(180deg, #1b1520ee, transparent);
+      pointer-events: none;
+    }
+    #hud * { pointer-events: auto; }
+    h1 { font-size: 16px; margin: 0; font-weight: 700; }
+    .tag { font-size: 11px; color: #b8aec2; font-family: ui-monospace, monospace; }
+    button {
+      font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+      background: #352b40; color: #f5eee6; border: 1px solid #4a3d5a; border-radius: 999px;
+      padding: 8px 16px;
+    }
+    button.active { background: linear-gradient(135deg, #ff8a3d, #ffcf5c); color: #2a1a0a; border-color: transparent; }
+    #canvas-wrap { position: fixed; inset: 0; }
+    #hint { position: fixed; bottom: 16px; left: 0; right: 0; text-align: center; font-size: 12px; color: #b8aec2; z-index: 2; }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div>
+      <h1>Clientes en 3D — prueba con Three.js</h1>
+      <div class="tag">no está conectado al juego todavía · solo exploración</div>
+    </div>
+    <button id="btn-idle" class="active">Parado</button>
+    <button id="btn-walk">Caminando</button>
+    <button id="btn-mood">Cambiar humor</button>
+    <a href="index.html" style="color:#b8aec2; font-size:12px; margin-left:auto;">← Volver al juego</a>
+  </div>
+  <div id="canvas-wrap"></div>
+  <div id="hint">Arrastra para rotar la cámara · rueda del mouse para acercar</div>
+  <script type="module" src="js-three-demo/main.js"></script>
+</body>
+</html>

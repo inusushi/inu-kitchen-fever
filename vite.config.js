@@ -1,8 +1,19 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   base: '/inu-kitchen-fever/',
+  build: {
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        // Exploración de personajes 3D con Three.js — no está enlazada desde
+        // el juego todavía, es solo para que Dany la vea sin correr nada local.
+        threeDemo: fileURLToPath(new URL('./three-demo.html', import.meta.url)),
+      },
+    },
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -27,6 +38,9 @@ export default defineConfig({
       workbox: {
         // Incluye las fotos: sin ellas el juego offline mostraría platillos rotos.
         globPatterns: ['**/*.{js,css,html,svg,webp,png}'],
+        // La demo de Three.js no es parte del juego para los jugadores —
+        // que nadie se la descargue sin querer al instalar la PWA.
+        globIgnores: ['three-demo.html', '**/threeDemo-*.js'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // Quien ya abrió el juego antes tiene un service worker viejo que le
         // serviría una versión pasada indefinidamente. Con esto el nuevo toma
