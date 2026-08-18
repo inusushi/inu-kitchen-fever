@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildCustomer } from './customer3d.js';
 import { buildBackWall, buildBambooCluster, createPetalSystem } from './scene-environment.js';
+import { buildCounter, buildChopStation, buildCookStation, buildPlateStation } from './kitchen-stations.js';
 import { CUSTOMERS } from '../js/game/avatars.js';
 
 const wrap = document.getElementById('canvas-wrap');
@@ -34,7 +35,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 wrap.append(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 1.4, -1);
+controls.target.set(0, 1.2, -1.4);
 controls.enableDamping = true;
 controls.minDistance = 3.5;
 controls.maxDistance = 12;
@@ -91,11 +92,34 @@ scene.add(bambooRight);
 const petals = createPetalSystem(30);
 scene.add(petals.group);
 
+// --- Barra de la cocina, con las 3 estaciones reales del juego (chop,
+// cook, plate — mismo orden y significado que STATION_TYPES en recipes.js) ---
+const counter = buildCounter();
+counter.position.set(0, 0, -1.85);
+scene.add(counter);
+
+const counterTopY = counter.userData.topY;
+const stationZ = -1.85;
+
+const chopStation = buildChopStation();
+chopStation.position.set(-2.1, counterTopY, stationZ);
+scene.add(chopStation);
+
+const cookStation = buildCookStation();
+cookStation.group.position.set(0, counterTopY, stationZ);
+scene.add(cookStation.group);
+
+const plateStation = buildPlateStation();
+plateStation.position.set(2.1, counterTopY, stationZ);
+scene.add(plateStation);
+
 // --- 4 clientes, con el mismo catálogo de atuendos que ya usa el juego ---
 const roster = [CUSTOMERS[1], CUSTOMERS[8], CUSTOMERS[10], CUSTOMERS[4]];
 const customers = roster.map((design, i) => {
   const c = buildCustomer({ outfit: design.outfit, mood: 'happy' });
-  const spread = (i - (roster.length - 1) / 2) * 1.5;
+  // Agrupados al centro, frente a la estación de cocción — así dejan
+  // libres los extremos de la barra donde están chop y plate.
+  const spread = (i - (roster.length - 1) / 2) * 0.95;
   c.position.x = spread;
   c.userData.baseX = spread;
   c.userData.phase = i * 0.7;
@@ -157,6 +181,7 @@ function animate() {
   });
 
   petals.update(dt, t);
+  cookStation.update(dt, t);
 
   controls.update();
   renderer.render(scene, camera);
