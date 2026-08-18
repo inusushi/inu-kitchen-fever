@@ -1,13 +1,18 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildCustomer } from './customer3d.js';
+import { buildBackWall, buildBambooCluster, createPetalSystem } from './scene-environment.js';
 import { CUSTOMERS } from '../js/game/avatars.js';
 
 const wrap = document.getElementById('canvas-wrap');
 
+// Sala oscura tipo omakase: el cuarto se pierde en negro, y el muro
+// pintado es el único punto claro — así el ojo va directo ahí.
+const ROOM_DARK = '#0e0c10';
+
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#241c2c');
-scene.fog = new THREE.Fog('#241c2c', 8, 16);
+scene.background = new THREE.Color(ROOM_DARK);
+scene.fog = new THREE.Fog(ROOM_DARK, 7, 15);
 
 // Respaldo si el viewport todavía no tiene tamaño real (por ejemplo, un
 // panel de vista previa que aún no se ha mostrado en pantalla).
@@ -18,8 +23,8 @@ function viewportSize() {
 }
 
 const { w: initW, h: initH } = viewportSize();
-const camera = new THREE.PerspectiveCamera(42, initW / initH, 0.1, 100);
-camera.position.set(0, 2.1, 6.5);
+const camera = new THREE.PerspectiveCamera(40, initW / initH, 0.1, 100);
+camera.position.set(0, 2.2, 7);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -29,17 +34,26 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 wrap.append(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 1, 0);
+controls.target.set(0, 1.4, -1);
 controls.enableDamping = true;
-controls.minDistance = 3;
+controls.minDistance = 3.5;
 controls.maxDistance = 12;
-controls.maxPolarAngle = Math.PI * 0.53;
+controls.maxPolarAngle = Math.PI * 0.5;
 
-// --- Luces: cálida como la cocina del juego (acento naranja) ---
-scene.add(new THREE.AmbientLight('#c9b8ff', 0.55));
+// --- Luces: cuarto oscuro, con un acento cálido sobre el muro pintado ---
+scene.add(new THREE.AmbientLight('#4a3f55', 0.35));
 
-const key = new THREE.DirectionalLight('#ffd9a0', 1.2);
-key.position.set(4, 6, 3);
+// Luz de acento sobre el mural — la razón de que el gris claro del muro
+// se lea contra el resto del cuarto en negro.
+const wallLight = new THREE.SpotLight('#ffd9a0', 3.2, 14, Math.PI / 5, 0.6, 1.2);
+wallLight.position.set(0, 5.5, 2);
+wallLight.target.position.set(0, 2, -3);
+wallLight.castShadow = false;
+scene.add(wallLight, wallLight.target);
+
+// Luz principal sobre el mostrador/personajes, con sombra.
+const key = new THREE.DirectionalLight('#ffe3b8', 0.9);
+key.position.set(3, 5, 4);
 key.castShadow = true;
 key.shadow.mapSize.set(1024, 1024);
 key.shadow.camera.left = -6;
@@ -48,18 +62,34 @@ key.shadow.camera.top = 6;
 key.shadow.camera.bottom = -6;
 scene.add(key);
 
-const rim = new THREE.DirectionalLight('#8a6bff', 0.4);
-rim.position.set(-4, 3, -4);
+const rim = new THREE.DirectionalLight('#c68fff', 0.25);
+rim.position.set(-4, 3, -2);
 scene.add(rim);
 
-// --- Piso, para que la sombra tenga dónde caer ---
+// --- Piso oscuro ---
 const floor = new THREE.Mesh(
   new THREE.CircleGeometry(9, 48),
-  new THREE.MeshStandardMaterial({ color: '#332942', roughness: 0.9 }),
+  new THREE.MeshStandardMaterial({ color: '#171316', roughness: 0.85 }),
 );
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
+
+// --- Muro con el árbol de sakura pintado ---
+scene.add(buildBackWall());
+
+// --- Bambú, a los lados del muro ---
+const bambooLeft = buildBambooCluster(3);
+bambooLeft.position.set(-4.3, 0, -1.6);
+scene.add(bambooLeft);
+
+const bambooRight = buildBambooCluster(3);
+bambooRight.position.set(4.3, 0, -1.6);
+scene.add(bambooRight);
+
+// --- Pétalos flotando frente al muro ---
+const petals = createPetalSystem(30);
+scene.add(petals.group);
 
 // --- 4 clientes, con el mismo catálogo de atuendos que ya usa el juego ---
 const roster = [CUSTOMERS[1], CUSTOMERS[8], CUSTOMERS[10], CUSTOMERS[4]];
@@ -105,6 +135,7 @@ window.addEventListener('resize', () => {
 const clock = new THREE.Clock();
 function animate() {
   const t = clock.getElapsedTime();
+  const dt = clock.getDelta();
 
   customers.forEach((c) => {
     const phase = t * 5 + c.userData.phase;
@@ -124,6 +155,8 @@ function animate() {
       c.userData.parts.footR.rotation.x = 0;
     }
   });
+
+  petals.update(dt, t);
 
   controls.update();
   renderer.render(scene, camera);
