@@ -105,6 +105,11 @@ export class MenuScene {
     const cloudBtn = el('button', 'btn btn-secondary', '☁ Guardado en la nube');
     addTap(cloudBtn, () => this.app.goTo(CloudScene));
 
+    // Exploración aparte, no conectada al juego — de baja prioridad visual
+    // a propósito, para no confundir a alguien que solo quiere jugar.
+    const threeDBtn = linkButton('btn btn-ghost', '🧊 Prueba 3D (experimental)', 'three-demo.html');
+    threeDBtn.addEventListener('click', () => this.app.audio.tap());
+
     const resetBtn = el('button', 'btn btn-ghost', 'Reiniciar progreso');
     addTap(resetBtn, () => {
       if (confirm('¿Borrar todo tu progreso guardado?')) {
@@ -115,7 +120,7 @@ export class MenuScene {
 
     wrap.append(muteBtn, a11yBar, logo, title, subtitle, coinsBadge, streakCard, dailyCard);
     if (eventCard) wrap.append(eventCard);
-    wrap.append(playBtn, orderBtn, cloudBtn, resetBtn);
+    wrap.append(playBtn, orderBtn, cloudBtn, threeDBtn, resetBtn);
     root.append(wrap);
   }
 
