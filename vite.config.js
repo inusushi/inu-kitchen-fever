@@ -41,6 +41,10 @@ export default defineConfig({
         // La demo de Three.js no es parte del juego para los jugadores —
         // que nadie se la descargue sin querer al instalar la PWA.
         globIgnores: ['three-demo.html', '**/threeDemo-*.js'],
+        // Sin esto, el service worker trata three-demo.html como una ruta
+        // desconocida de la SPA y le sirve index.html en su lugar — por
+        // eso Dany veía el juego normal en vez de la demo 3D.
+        navigateFallbackDenylist: [/^\/inu-kitchen-fever\/three-demo\.html$/],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // Quien ya abrió el juego antes tiene un service worker viejo que le
         // serviría una versión pasada indefinidamente. Con esto el nuevo toma
