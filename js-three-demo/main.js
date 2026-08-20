@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { buildCustomer } from './customer3d.js';
 import { buildChef } from './chef3d.js';
 import { buildBackWall, buildBambooCluster, createPetalSystem } from './scene-environment.js';
 import { buildCounter, buildChopStation, buildCookStation, buildPlateStation } from './kitchen-stations.js';
-import { CUSTOMERS } from '../js/game/avatars.js';
+import { createQueueSim } from './queue-sim.js';
+import { LEVELS } from '../js/data/levels.js';
 
 const wrap = document.getElementById('canvas-wrap');
 
@@ -129,40 +129,23 @@ const chefs = [
   return chef;
 });
 
-// --- 4 clientes, con el mismo catálogo de atuendos que ya usa el juego ---
-const roster = [CUSTOMERS[1], CUSTOMERS[8], CUSTOMERS[10], CUSTOMERS[4]];
-const customers = roster.map((design, i) => {
-  const c = buildCustomer({ outfit: design.outfit, mood: 'happy' });
-  // Agrupados al centro, frente a la estación de cocción — así dejan
-  // libres los extremos de la barra donde están chop y plate.
-  const spread = (i - (roster.length - 1) / 2) * 0.95;
-  c.position.x = spread;
-  c.userData.baseX = spread;
-  c.userData.phase = i * 0.7;
-  scene.add(c);
-  return c;
-});
+// --- Cola de clientes real, nivel Onigiri (el primero del juego real) ---
+const queueSim = createQueueSim({ scene, camera, level: LEVELS[0] });
 
-let walking = false;
-const btnIdle = document.getElementById('btn-idle');
-const btnWalk = document.getElementById('btn-walk');
-const btnMood = document.getElementById('btn-mood');
-const moods = ['happy', 'meh', 'annoyed'];
-let moodIndex = 0;
+let pointerDownAt = null;
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  pointerDownAt = { x: e.clientX, y: e.clientY };
+});
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!pointerDownAt) return;
+  const moved = Math.hypot(e.clientX - pointerDownAt.x, e.clientY - pointerDownAt.y);
+  pointerDownAt = null;
+  if (moved > 6) return; // fue un arrastre de cámara, no un toque a un cliente
 
-btnIdle.addEventListener('click', () => {
-  walking = false;
-  btnIdle.classList.add('active');
-  btnWalk.classList.remove('active');
-});
-btnWalk.addEventListener('click', () => {
-  walking = true;
-  btnWalk.classList.add('active');
-  btnIdle.classList.remove('active');
-});
-btnMood.addEventListener('click', () => {
-  moodIndex = (moodIndex + 1) % moods.length;
-  customers.forEach((c) => c.userData.setMood(moods[moodIndex]));
+  const rect = renderer.domElement.getBoundingClientRect();
+  const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  const ndcY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+  queueSim.tryServe(ndcX, ndcY);
 });
 
 window.addEventListener('resize', () => {
@@ -177,24 +160,7 @@ function animate() {
   const t = clock.getElapsedTime();
   const dt = clock.getDelta();
 
-  customers.forEach((c) => {
-    const phase = t * 5 + c.userData.phase;
-    if (walking) {
-      c.position.x = c.userData.baseX + Math.sin(t * 0.6 + c.userData.phase) * 0.6;
-      c.position.y = Math.abs(Math.sin(phase)) * 0.12;
-      c.rotation.z = Math.sin(phase) * 0.06;
-      c.userData.parts.footL.rotation.x = Math.sin(phase) * 0.6;
-      c.userData.parts.footR.rotation.x = Math.sin(phase + Math.PI) * 0.6;
-      c.rotation.y = Math.sin(t * 0.6 + c.userData.phase) > 0 ? 0.15 : -0.15;
-    } else {
-      c.position.x = c.userData.baseX;
-      c.position.y = Math.sin(t * 1.6 + c.userData.phase) * 0.03;
-      c.rotation.z = 0;
-      c.rotation.y = Math.sin(t * 0.4 + c.userData.phase) * 0.15;
-      c.userData.parts.footL.rotation.x = 0;
-      c.userData.parts.footR.rotation.x = 0;
-    }
-  });
+  queueSim.update(dt, t);
 
   chefs.forEach((chef) => {
     const phase = chef.userData.phase;

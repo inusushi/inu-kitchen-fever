@@ -16,12 +16,6 @@
     #hud * { pointer-events: auto; }
     h1 { font-size: 16px; margin: 0; font-weight: 700; }
     .tag { font-size: 11px; color: #b8aec2; font-family: ui-monospace, monospace; }
-    button {
-      font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
-      background: #352b40; color: #f5eee6; border: 1px solid #4a3d5a; border-radius: 999px;
-      padding: 8px 16px;
-    }
-    button.active { background: linear-gradient(135deg, #ff8a3d, #ffcf5c); color: #2a1a0a; border-color: transparent; }
     #canvas-wrap { position: fixed; inset: 0; }
     #hint { position: fixed; bottom: 16px; left: 0; right: 0; text-align: center; font-size: 12px; color: #b8aec2; z-index: 2; }
   </style>
@@ -30,15 +24,12 @@
   <div id="hud">
     <div>
       <h1>Escenario 3D — prueba con Three.js</h1>
-      <div class="tag">barra + estaciones + clientes · no está conectado al juego todavía</div>
+      <div class="tag">nivel Onigiri real corriendo en 3D · el resto del juego sigue sin tocarse</div>
     </div>
-    <button id="btn-idle" class="active">Parado</button>
-    <button id="btn-walk">Caminando</button>
-    <button id="btn-mood">Cambiar humor</button>
     <a href="index.html" style="color:#b8aec2; font-size:12px; margin-left:auto;">← Volver al juego</a>
   </div>
   <div id="canvas-wrap"></div>
-  <div id="hint">Arrastra para rotar la cámara · rueda del mouse para acercar</div>
+  <div id="hint">Arrastra para rotar la cámara · rueda para acercar · toca a un cliente para atenderlo antes de que se le acabe la paciencia</div>
   <script type="module" src="js-three-demo/main.js"></script>
 </body>
 </html>

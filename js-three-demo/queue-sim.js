@@ -1,0 +1,230 @@
+import * as THREE from 'three';
+import { buildCustomer } from './customer3d.js';
+import { Customer } from '../js/game/Customer.js';
+import { spawnOrder } from '../js/game/Order.js';
+import { patienceForOrder, pickCustomerType } from '../js/game/customerTypes.js';
+import { CUSTOMERS as CUSTOMER_DESIGNS, moodFor } from '../js/game/avatars.js';
+
+const ENTRY_X = -6.5;
+const EXIT_HAPPY_X = 6.5;
+const SLOT_SPREAD = 2;
+const WALK_DURATION = 2.1; // segundos para cruzar toda la barra
+
+const MOOD_TO_FACE = { contento: 'happy', esperando: 'meh', impaciente: 'meh', enojado: 'annoyed' };
+const MOOD_TO_COLOR = { contento: '#4dd67a', esperando: '#a8d67a', impaciente: '#ffcc33', enojado: '#ff5a5a' };
+
+// Cola de clientes real: usa las mismas clases y funciones que KitchenScene
+// (Customer, spawnOrder, patienceForOrder, pickCustomerType, moodFor) para
+// que la paciencia, el tipo de cliente y el pedido no sean inventados para
+// la demo — es el nivel Onigiri real corriendo, solo que dibujado en 3D.
+export function createQueueSim({ scene, camera, level }) {
+  const slots = buildSlots(level.maxCustomers);
+  const active = [];
+  let spawnTimer = randomSpawnDelay();
+
+  function randomSpawnDelay() {
+    const [min, max] = level.spawnInterval;
+    return (min + Math.random() * (max - min)) / 1000;
+  }
+
+  function freeSlotIndex() {
+    for (let i = 0; i < slots.length; i++) {
+      if (!active.some((c) => c.slotIndex === i)) return i;
+    }
+    return -1;
+  }
+
+  function trySpawn() {
+    const slotIndex = freeSlotIndex();
+    if (slotIndex === -1) return;
+
+    const tipo = pickCustomerType(level);
+    const recipes = spawnOrder(level).slice(0, tipo.maxOrderSize);
+    const patience = patienceForOrder(level.patience, recipes.length, tipo);
+    const game = new Customer(recipes, patience);
+    game.type = tipo;
+
+    const design = CUSTOMER_DESIGNS[Math.floor(Math.random() * CUSTOMER_DESIGNS.length)];
+    const mesh = buildCustomer({ outfit: design.outfit, mood: 'happy' });
+    const slot = slots[slotIndex];
+    mesh.position.set(ENTRY_X, 0, slot.z);
+    scene.add(mesh);
+
+    const bubble = buildOrderBubble(recipes);
+    scene.add(bubble.mesh);
+
+    active.push({
+      game, mesh, bubble, slotIndex,
+      state: 'entering',
+      walkFrom: ENTRY_X, walkTo: slot.x, walkT: 0,
+      phase: Math.random() * Math.PI * 2,
+      lastBarDraw: 0,
+    });
+  }
+
+  function buildOrderBubble(recipes) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 160;
+    canvas.height = 190;
+    const ctx = canvas.getContext('2d');
+    const texture = new THREE.CanvasTexture(canvas);
+    const geo = new THREE.PlaneGeometry(0.62, 0.74);
+    // Sin depthTest, como el globo de pedido del juego real (DOM por
+    // encima de todo) — así nunca queda tapado por otro cliente o la barra.
+    const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = 10;
+    return { mesh, canvas, ctx, texture, emojis: recipes.map((r) => r.emoji) };
+  }
+
+  function redrawBubble(entry, ratio, barColor) {
+    const { ctx, canvas, emojis } = entry.bubble;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    roundRect(ctx, 6, 6, canvas.width - 12, canvas.height - 34, 18);
+    ctx.fill();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const midY = 6 + (canvas.height - 34) / 2;
+    if (emojis.length === 1) {
+      ctx.font = '54px sans-serif';
+      ctx.fillText(emojis[0], canvas.width / 2, midY);
+    } else {
+      ctx.font = '36px sans-serif';
+      const step = (canvas.width - 30) / emojis.length;
+      emojis.forEach((e, i) => ctx.fillText(e, 20 + step * i + step / 2, midY));
+    }
+
+    // Cola del globo, apuntando hacia la cabeza.
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2 - 10, canvas.height - 28);
+    ctx.lineTo(canvas.width / 2 + 10, canvas.height - 28);
+    ctx.lineTo(canvas.width / 2, canvas.height - 14);
+    ctx.closePath();
+    ctx.fill();
+
+    // Barra de paciencia, mismo lugar que ocupa en el HUD 2D del juego.
+    const barY = canvas.height - 10;
+    const barW = canvas.width - 20;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    roundRect(ctx, 10, barY - 6, barW, 8, 4);
+    ctx.fill();
+    ctx.fillStyle = barColor;
+    roundRect(ctx, 10, barY - 6, Math.max(barW * ratio, 4), 8, 4);
+    ctx.fill();
+
+    entry.bubble.texture.needsUpdate = true;
+  }
+
+  function beginExit(entry, happy) {
+    entry.state = happy ? 'leaving-happy' : 'leaving-angry';
+    entry.walkFrom = entry.mesh.position.x;
+    entry.walkTo = happy ? EXIT_HAPPY_X : ENTRY_X;
+    entry.walkT = 0;
+    scene.remove(entry.bubble.mesh);
+  }
+
+  // ndcX/ndcY: coordenadas de clic ya normalizadas a [-1, 1] (las calcula
+  // main.js a partir del canvas, así este módulo no toca el DOM).
+  function tryServe(ndcX, ndcY) {
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera({ x: ndcX, y: ndcY }, camera);
+
+    for (const entry of active) {
+      if (entry.state !== 'waiting') continue;
+      const hits = raycaster.intersectObjects(entry.mesh.children, true);
+      if (!hits.length) continue;
+
+      const recipeId = entry.game.pendingRecipes()[0]?.id;
+      if (!recipeId) return true;
+      const done = entry.game.deliver(recipeId);
+      if (done) {
+        entry.mesh.userData.setMood('happy');
+        beginExit(entry, true);
+      } else {
+        const mood = moodFor(entry.game.patienceRatio());
+        redrawBubble(entry, entry.game.patienceRatio(), MOOD_TO_COLOR[mood.label]);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  function update(dt, t) {
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      trySpawn();
+      spawnTimer = randomSpawnDelay();
+    }
+
+    for (let i = active.length - 1; i >= 0; i--) {
+      const entry = active[i];
+      const { mesh } = entry;
+
+      if (entry.state === 'entering' || entry.state.startsWith('leaving')) {
+        entry.walkT = Math.min(1, entry.walkT + dt / WALK_DURATION);
+        mesh.position.x = entry.walkFrom + (entry.walkTo - entry.walkFrom) * entry.walkT;
+        const phase = t * 5 + entry.phase;
+        mesh.position.y = Math.abs(Math.sin(phase)) * 0.12;
+        mesh.rotation.z = Math.sin(phase) * 0.06;
+        mesh.userData.parts.footL.rotation.x = Math.sin(phase) * 0.6;
+        mesh.userData.parts.footR.rotation.x = Math.sin(phase + Math.PI) * 0.6;
+        mesh.rotation.y = entry.walkTo > entry.walkFrom ? 0.15 : -0.15;
+
+        if (entry.walkT >= 1) {
+          if (entry.state === 'entering') {
+            entry.state = 'waiting';
+            mesh.rotation.set(0, 0, 0);
+            redrawBubble(entry, 1, MOOD_TO_COLOR.contento);
+          } else {
+            scene.remove(mesh);
+            active.splice(i, 1);
+            continue;
+          }
+        }
+      } else if (entry.state === 'waiting') {
+        entry.game.update(dt * 1000);
+        const ratio = entry.game.patienceRatio();
+        const mood = moodFor(ratio);
+        mesh.userData.setMood(MOOD_TO_FACE[mood.label]);
+
+        const phase = t * 1.6 + entry.phase;
+        mesh.position.y = Math.sin(phase) * 0.03;
+        mesh.rotation.y = Math.sin(t * 0.4 + entry.phase) * 0.12;
+
+        entry.lastBarDraw += dt;
+        if (entry.lastBarDraw > 0.15) {
+          entry.lastBarDraw = 0;
+          redrawBubble(entry, ratio, MOOD_TO_COLOR[mood.label]);
+        }
+
+        if (entry.game.state === 'left') beginExit(entry, false);
+      }
+
+      if (entry.state === 'waiting' || entry.state === 'entering') {
+        entry.bubble.mesh.position.set(mesh.position.x, 2.15, mesh.position.z);
+        entry.bubble.mesh.quaternion.copy(camera.quaternion);
+      }
+    }
+  }
+
+  return { update, tryServe };
+}
+
+function buildSlots(count) {
+  const startX = -((count - 1) / 2) * SLOT_SPREAD;
+  return Array.from({ length: count }, (_, i) => ({ x: startX + i * SLOT_SPREAD, z: 0.9 }));
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
