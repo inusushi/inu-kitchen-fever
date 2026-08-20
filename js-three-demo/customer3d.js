@@ -45,7 +45,8 @@ export function buildCustomer({ outfit = '#5b8def', skin = '#f2c9a0', mood = 'ha
 
 // La cara se pinta en un <canvas> normal — el mismo truco que ya usa el
 // juego para las fotos de platillos, solo que aquí es una textura de Three.
-function buildFaceTexture(mood, skin) {
+// Exportada para que chef3d.js pinte la misma cara sobre su propia cabeza.
+export function buildFaceTexture(mood, skin) {
   const size = 256;
   const canvas = document.createElement('canvas');
   canvas.width = size;

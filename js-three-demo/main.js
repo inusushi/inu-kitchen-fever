@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildCustomer } from './customer3d.js';
+import { buildChef } from './chef3d.js';
 import { buildBackWall, buildBambooCluster, createPetalSystem } from './scene-environment.js';
 import { buildCounter, buildChopStation, buildCookStation, buildPlateStation } from './kitchen-stations.js';
 import { CUSTOMERS } from '../js/game/avatars.js';
@@ -113,6 +114,21 @@ const plateStation = buildPlateStation();
 plateStation.position.set(2.1, counterTopY, stationZ);
 scene.add(plateStation);
 
+// --- Un cocinero parado detrás de cada estación (COOK_AVATARS en
+// js/game/avatars.js: los 3 son emoji de chef, solo cambia el acento) ---
+const chefZ = stationZ - 0.65;
+const chefs = [
+  { x: -2.1, accent: '#4a4a52', phase: 0 },
+  { x: 0, accent: '#a13c22', phase: 1.1 },
+  { x: 2.1, accent: '#2d6e6e', phase: 2.3 },
+].map(({ x, accent, phase }) => {
+  const chef = buildChef({ accent });
+  chef.position.set(x, 0, chefZ);
+  chef.userData.phase = phase;
+  scene.add(chef);
+  return chef;
+});
+
 // --- 4 clientes, con el mismo catálogo de atuendos que ya usa el juego ---
 const roster = [CUSTOMERS[1], CUSTOMERS[8], CUSTOMERS[10], CUSTOMERS[4]];
 const customers = roster.map((design, i) => {
@@ -178,6 +194,14 @@ function animate() {
       c.userData.parts.footL.rotation.x = 0;
       c.userData.parts.footR.rotation.x = 0;
     }
+  });
+
+  chefs.forEach((chef) => {
+    const phase = chef.userData.phase;
+    chef.position.y = Math.sin(t * 1.4 + phase) * 0.025;
+    // Inclinación hacia la barra, como si estuvieran trabajando en algo.
+    chef.rotation.x = 0.08 + Math.sin(t * 2.2 + phase) * 0.03;
+    chef.userData.parts.head.rotation.x = Math.sin(t * 2.2 + phase) * 0.08;
   });
 
   petals.update(dt, t);
