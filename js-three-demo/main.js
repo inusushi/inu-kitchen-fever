@@ -130,7 +130,7 @@ const chefs = [
 });
 
 // --- Cola de clientes real, nivel Onigiri (el primero del juego real) ---
-const queueSim = createQueueSim({ scene, camera, level: LEVELS[0] });
+const queueSim = createQueueSim({ scene, camera, level: LEVELS[0], platePosition: plateStation.position });
 
 let pointerDownAt = null;
 renderer.domElement.addEventListener('pointerdown', (e) => {

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { buildCustomer } from './customer3d.js';
+import { buildDishSprite } from './dish-sprite.js';
 import { Customer } from '../js/game/Customer.js';
 import { spawnOrder } from '../js/game/Order.js';
 import { patienceForOrder, pickCustomerType } from '../js/game/customerTypes.js';
@@ -9,6 +10,7 @@ const ENTRY_X = -6.5;
 const EXIT_HAPPY_X = 6.5;
 const SLOT_SPREAD = 2;
 const WALK_DURATION = 2.1; // segundos para cruzar toda la barra
+const FLY_DURATION = 0.55; // segundos que tarda el platillo en llegar de la barra al cliente
 
 const MOOD_TO_FACE = { contento: 'happy', esperando: 'meh', impaciente: 'meh', enojado: 'annoyed' };
 const MOOD_TO_COLOR = { contento: '#4dd67a', esperando: '#a8d67a', impaciente: '#ffcc33', enojado: '#ff5a5a' };
@@ -17,7 +19,7 @@ const MOOD_TO_COLOR = { contento: '#4dd67a', esperando: '#a8d67a', impaciente: '
 // (Customer, spawnOrder, patienceForOrder, pickCustomerType, moodFor) para
 // que la paciencia, el tipo de cliente y el pedido no sean inventados para
 // la demo — es el nivel Onigiri real corriendo, solo que dibujado en 3D.
-export function createQueueSim({ scene, camera, level }) {
+export function createQueueSim({ scene, camera, level, platePosition }) {
   const slots = buildSlots(level.maxCustomers);
   const active = [];
   let spawnTimer = randomSpawnDelay();
@@ -59,7 +61,20 @@ export function createQueueSim({ scene, camera, level }) {
       walkFrom: ENTRY_X, walkTo: slot.x, walkT: 0,
       phase: Math.random() * Math.PI * 2,
       lastBarDraw: 0,
+      flyingDishes: [], pendingFlights: 0,
     });
+  }
+
+  // El platillo sale de la estación de armado (plate) y viaja hasta el
+  // cliente — así el pedido no se completa "de la nada": se ve venir de
+  // la cocina, aunque el jugador todavía no toque las estaciones a mano.
+  function spawnFlyingDish(entry, recipe, isFinal) {
+    const sprite = buildDishSprite(recipe);
+    const from = platePosition.clone().add(new THREE.Vector3(0, 0.4, 0));
+    sprite.position.copy(from);
+    scene.add(sprite);
+    entry.pendingFlights++;
+    entry.flyingDishes.push({ sprite, from, t: 0, isFinal });
   }
 
   function buildOrderBubble(recipes) {
@@ -138,13 +153,11 @@ export function createQueueSim({ scene, camera, level }) {
       const hits = raycaster.intersectObjects(entry.mesh.children, true);
       if (!hits.length) continue;
 
-      const recipeId = entry.game.pendingRecipes()[0]?.id;
-      if (!recipeId) return true;
-      const done = entry.game.deliver(recipeId);
-      if (done) {
-        entry.mesh.userData.setMood('happy');
-        beginExit(entry, true);
-      } else {
+      const recipe = entry.game.pendingRecipes()[0];
+      if (!recipe) return true;
+      const done = entry.game.deliver(recipe.id);
+      spawnFlyingDish(entry, recipe, done);
+      if (!done) {
         const mood = moodFor(entry.game.patienceRatio());
         redrawBubble(entry, entry.game.patienceRatio(), MOOD_TO_COLOR[mood.label]);
       }
@@ -186,22 +199,49 @@ export function createQueueSim({ scene, camera, level }) {
           }
         }
       } else if (entry.state === 'waiting') {
-        entry.game.update(dt * 1000);
-        const ratio = entry.game.patienceRatio();
-        const mood = moodFor(ratio);
-        mesh.userData.setMood(MOOD_TO_FACE[mood.label]);
+        // Una vez completo el pedido, deja de correr la paciencia — si no,
+        // un vuelo lento podría dejarlo "sin paciencia" justo cuando ya
+        // le estábamos llevando su platillo.
+        if (!entry.game.isComplete()) {
+          entry.game.update(dt * 1000);
+          const ratio = entry.game.patienceRatio();
+          const mood = moodFor(ratio);
+          mesh.userData.setMood(MOOD_TO_FACE[mood.label]);
+
+          entry.lastBarDraw += dt;
+          if (entry.lastBarDraw > 0.15) {
+            entry.lastBarDraw = 0;
+            redrawBubble(entry, ratio, MOOD_TO_COLOR[mood.label]);
+          }
+
+          if (entry.game.state === 'left') beginExit(entry, false);
+        }
 
         const phase = t * 1.6 + entry.phase;
         mesh.position.y = Math.sin(phase) * 0.03;
         mesh.rotation.y = Math.sin(t * 0.4 + entry.phase) * 0.12;
+      }
 
-        entry.lastBarDraw += dt;
-        if (entry.lastBarDraw > 0.15) {
-          entry.lastBarDraw = 0;
-          redrawBubble(entry, ratio, MOOD_TO_COLOR[mood.label]);
+      // Platillos en vuelo hacia este cliente (si el estado cambió a
+      // "leaving" mientras uno seguía en el aire, igual termina su viaje).
+      for (let j = entry.flyingDishes.length - 1; j >= 0; j--) {
+        const flight = entry.flyingDishes[j];
+        flight.t = Math.min(1, flight.t + dt / FLY_DURATION);
+        const to = new THREE.Vector3(mesh.position.x, 1.9, mesh.position.z);
+        flight.sprite.position.lerpVectors(flight.from, to, flight.t);
+        flight.sprite.position.y += Math.sin(flight.t * Math.PI) * 0.5;
+        const scale = 0.55 + Math.sin(flight.t * Math.PI) * 0.15;
+        flight.sprite.scale.set(scale, scale, 1);
+
+        if (flight.t >= 1) {
+          scene.remove(flight.sprite);
+          entry.flyingDishes.splice(j, 1);
+          entry.pendingFlights--;
+          if (flight.isFinal && entry.pendingFlights <= 0 && entry.state === 'waiting') {
+            mesh.userData.setMood('happy');
+            beginExit(entry, true);
+          }
         }
-
-        if (entry.game.state === 'left') beginExit(entry, false);
       }
 
       if (entry.state === 'waiting' || entry.state === 'entering') {
