@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildCustomer } from './customer3d.js';
-import { buildDishSprite } from './dish-sprite.js';
+import { buildDishSprite, disposeDishSprite } from './dish-sprite.js';
 import { Customer } from '../js/game/Customer.js';
 import { spawnOrder } from '../js/game/Order.js';
 import { patienceForOrder, pickCustomerType, isRushHour, RUSH_SPAWN_FACTOR } from '../js/game/customerTypes.js';
@@ -257,6 +257,7 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
 
         if (flight.t >= 1) {
           scene.remove(flight.sprite);
+          disposeDishSprite(flight.sprite);
           entry.flyingDishes.splice(j, 1);
           entry.pendingFlights--;
           if (flight.isFinal && entry.pendingFlights <= 0 && entry.state === 'waiting') {
@@ -279,7 +280,7 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
     for (const entry of active) {
       scene.remove(entry.mesh);
       scene.remove(entry.bubble.mesh);
-      entry.flyingDishes.forEach((f) => scene.remove(f.sprite));
+      entry.flyingDishes.forEach((f) => { scene.remove(f.sprite); disposeDishSprite(f.sprite); });
     }
     active.length = 0;
     combo = 0;

@@ -49,3 +49,13 @@ export function buildDishSprite(recipe) {
 
   return sprite;
 }
+
+// La textura del emoji es compartida (cacheada por emoji) entre todos los
+// sprites que la usan — nunca se libera. Solo la foto real, si alcanzó a
+// cargar, es exclusiva de este sprite y sí hay que liberarla.
+export function disposeDishSprite(sprite) {
+  const map = sprite.material.map;
+  const isSharedEmoji = [...emojiTextureCache.values()].includes(map);
+  if (map && !isSharedEmoji) map.dispose();
+  sprite.material.dispose();
+}

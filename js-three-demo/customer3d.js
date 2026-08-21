@@ -35,7 +35,15 @@ export function buildCustomer({ outfit = '#5b8def', skin = '#f2c9a0', mood = 'ha
   group.userData.parts = { body, head, footL, footR };
   group.userData.mood = mood;
   group.userData.setMood = (next) => {
+    // queue-sim.js llama esto cada frame mientras el cliente espera, no
+    // solo cuando el humor cambia — sin este freno, generaba un canvas y
+    // una textura de GPU nuevos ~60 veces por segundo por cliente y nunca
+    // liberaba la anterior (Texture.dispose() no es automático en Three.js).
+    // Con 4 clientes esperando durante una ronda de 75s, eso son miles de
+    // texturas filtrándose a la GPU.
+    if (group.userData.mood === next) return;
     group.userData.mood = next;
+    headMat.map.dispose();
     headMat.map = buildFaceTexture(next, skin);
     headMat.needsUpdate = true;
   };
