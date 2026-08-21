@@ -20,6 +20,34 @@ export function buildBackWall({ width = 11, height = width / (1408 / 768) } = {}
   return wall;
 }
 
+// --- Paredes laterales: cuarto de 3 paredes, sin la "cuarta pared" que
+// mira a cámara — como un foro de teatro, se ve hacia adentro pero nada
+// bloquea la vista del público. Mismo tono oscuro que el piso, para que
+// se sientan parte del mismo cascarón y no le quiten protagonismo al
+// muro del mural. Quedan más allá de por dónde entran/salen los
+// clientes (ver ENTRY_X/EXIT_HAPPY_X en queue-sim.js) para que nadie
+// camine "a través" de una pared.
+export function buildSideWalls({ x = 11, zFrom = -3.15, zTo = 6, height = 7 } = {}) {
+  const mat = new THREE.MeshStandardMaterial({ color: '#171316', roughness: 0.9 });
+  const geo = new THREE.PlaneGeometry(zTo - zFrom, height);
+  const y = height / 2 - 0.1;
+  const centerZ = (zFrom + zTo) / 2;
+
+  const left = new THREE.Mesh(geo, mat);
+  left.position.set(-x, y, centerZ);
+  left.rotation.y = Math.PI / 2; // normal hacia +X: mira hacia adentro del cuarto
+  left.receiveShadow = true;
+
+  const right = new THREE.Mesh(geo, mat);
+  right.position.set(x, y, centerZ);
+  right.rotation.y = -Math.PI / 2; // normal hacia -X: mira hacia adentro del cuarto
+  right.receiveShadow = true;
+
+  const group = new THREE.Group();
+  group.add(left, right);
+  return group;
+}
+
 // --- Bambú: cilindros reales, no una textura ---
 // Cada tallo es 100% estático (nunca se mueve tras colocarse), así que en
 // vez de dejar cada segmento/anillo/hoja como su propio Mesh — 36 draw

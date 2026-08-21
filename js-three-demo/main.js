@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildChef } from './chef3d.js';
-import { buildBackWall, buildBambooCluster, createPetalSystem } from './scene-environment.js';
+import { buildBackWall, buildSideWalls, buildBambooCluster, createPetalSystem } from './scene-environment.js';
 import { buildCounter, buildChopStation, buildCookStation, buildPlateStation } from './kitchen-stations.js';
 import { createQueueSim } from './queue-sim.js';
 import { LEVELS } from '../js/data/levels.js';
@@ -46,6 +46,12 @@ controls.enableDamping = true;
 controls.minDistance = 3.5;
 controls.maxDistance = 12;
 controls.maxPolarAngle = Math.PI * 0.5;
+// Sin la "cuarta pared", la cámara es el público de un foro de teatro —
+// puede acercarse o alejarse, pero no rodear el set hasta salirse por
+// donde estarían las paredes laterales (con maxDistance=12, ±60° deja el
+// peor caso en x≈10.4, dentro de las paredes en x=±11).
+controls.minAzimuthAngle = -Math.PI / 3;
+controls.maxAzimuthAngle = Math.PI / 3;
 
 // --- Luces: cuarto oscuro, con un acento cálido sobre el muro pintado ---
 scene.add(new THREE.AmbientLight('#4a3f55', 0.35));
@@ -84,6 +90,9 @@ scene.add(floor);
 
 // --- Muro con el árbol de sakura pintado ---
 scene.add(buildBackWall());
+
+// --- Paredes laterales: cuarto de 3 paredes, sin la que mira a cámara ---
+scene.add(buildSideWalls());
 
 // --- Bambú, a los lados del muro ---
 const bambooLeft = buildBambooCluster(3);
