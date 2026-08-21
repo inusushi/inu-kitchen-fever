@@ -237,8 +237,14 @@ window.addEventListener('resize', () => {
 
 const clock = new THREE.Clock();
 function animate() {
-  const t = clock.getElapsedTime();
+  // getElapsedTime() llama a getDelta() por dentro — pedir los dos por
+  // separado hacía que este getDelta() midiera el tiempo entre esas dos
+  // líneas (microsegundos) en vez del tiempo real entre frames. Por eso
+  // nada que dependiera de dt avanzaba: ni los clientes caminaban, ni
+  // bajaba el timer, ni caían los pétalos — solo lo que usa t (los
+  // vaivenes) se movía, dando la sensación de una escena congelada.
   const dt = clock.getDelta();
+  const t = clock.elapsedTime;
 
   if (!roundOver) {
     timeLeft = Math.max(0, timeLeft - dt * 1000);
