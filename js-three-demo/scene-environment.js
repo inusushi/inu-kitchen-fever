@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const textureLoader = new THREE.TextureLoader();
 
@@ -20,11 +21,22 @@ export function buildBackWall({ width = 11, height = width / (1408 / 768) } = {}
 }
 
 // --- Bambú: cilindros reales, no una textura ---
+// Cada tallo es 100% estático (nunca se mueve tras colocarse), así que en
+// vez de dejar cada segmento/anillo/hoja como su propio Mesh — 36 draw
+// calls por cada llamada a esta función, 72 entre los 2 grupos de la
+// escena — horneamos la posición de cada pieza directo en su geometría
+// (con una jerarquía temporal que nunca se agrega a la escena, solo para
+// que Three.js calcule las matrices) y fundimos todo en 3 mallas, una
+// por material. Mismo resultado visual, 24 veces menos draw calls.
 export function buildBambooCluster(count = 3) {
-  const group = new THREE.Group();
   const stalkMat = new THREE.MeshStandardMaterial({ color: '#4f7a3d', roughness: 0.55 });
   const ringMat = new THREE.MeshStandardMaterial({ color: '#33512a', roughness: 0.6 });
   const leafMat = new THREE.MeshStandardMaterial({ color: '#6fae52', roughness: 0.6, side: THREE.DoubleSide });
+
+  const tempRoot = new THREE.Group();
+  const segMeshes = [];
+  const ringMeshes = [];
+  const leafMeshes = [];
 
   for (let i = 0; i < count; i++) {
     const stalkHeight = 3.2 + Math.random() * 0.9;
@@ -34,37 +46,53 @@ export function buildBambooCluster(count = 3) {
     const segments = 5;
     const segH = stalkHeight / segments;
     for (let s = 0; s < segments; s++) {
-      const seg = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, segH * 0.92, 10), stalkMat);
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, segH * 0.92, 10));
       seg.position.y = segH * s + segH / 2;
-      seg.castShadow = true;
       stalk.add(seg);
+      segMeshes.push(seg);
 
       if (s < segments - 1) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(radius * 1.02, radius * 0.16, 6, 12), ringMat);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(radius * 1.02, radius * 0.16, 6, 12));
         ring.rotation.x = Math.PI / 2;
         ring.position.y = segH * (s + 1);
         stalk.add(ring);
+        ringMeshes.push(ring);
       }
     }
 
     // Un par de hojas cerca de la punta.
     for (let l = 0; l < 3; l++) {
-      const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.5, 4, 1, true), leafMat);
+      const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.5, 4, 1, true));
       leaf.position.set(0, stalkHeight - 0.4 + l * 0.25, 0);
       leaf.rotation.z = (Math.random() - 0.5) * 1.2;
       leaf.rotation.x = 0.3 + Math.random() * 0.4;
       stalk.add(leaf);
+      leafMeshes.push(leaf);
     }
 
     stalk.position.set(i * 0.22 - (count - 1) * 0.11, 0, i * 0.08);
     stalk.rotation.y = Math.random() * Math.PI;
-    group.add(stalk);
+    tempRoot.add(stalk);
   }
+
+  tempRoot.updateMatrixWorld(true);
+  const bake = (meshes) => mergeGeometries(meshes.map((m) => m.geometry.clone().applyMatrix4(m.matrixWorld)));
+
+  const group = new THREE.Group();
+  const stalksMesh = new THREE.Mesh(bake(segMeshes), stalkMat);
+  stalksMesh.castShadow = true; // igual que antes: solo los tallos, no anillos ni hojas
+  const ringsMesh = new THREE.Mesh(bake(ringMeshes), ringMat);
+  const leavesMesh = new THREE.Mesh(bake(leafMeshes), leafMat);
+  group.add(stalksMesh, ringsMesh, leavesMesh);
 
   return group;
 }
 
 // --- Pétalos flotando frente al muro ---
+// Antes eran 30 Mesh independientes (30 draw calls) solo para agitar cada
+// uno con su propio vaivén. Un InstancedMesh renderiza los 30 en una sola
+// llamada; cada pétalo sigue siendo libre de moverse por su cuenta porque
+// solo actualizamos su matriz de transformación, no su geometría.
 export function createPetalSystem(count = 26) {
   const petalGeo = new THREE.PlaneGeometry(0.09, 0.06);
   const petalMat = new THREE.MeshStandardMaterial({
@@ -75,41 +103,54 @@ export function createPetalSystem(count = 26) {
     roughness: 0.4,
   });
 
-  const group = new THREE.Group();
+  const instanced = new THREE.InstancedMesh(petalGeo, petalMat, count);
+  instanced.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  // Los pétalos se reparten en un área más grande que su geometría base;
+  // sin esto, Three.js podría recortarlos por error de cámara al calcular
+  // el volumen de recorte solo con el tamaño de un pétalo suelto.
+  instanced.frustumCulled = false;
+
+  const dummy = new THREE.Object3D();
   const petals = [];
 
   for (let i = 0; i < count; i++) {
-    const petal = new THREE.Mesh(petalGeo, petalMat);
-    resetPetal(petal, true);
-    group.add(petal);
-    petals.push({
-      mesh: petal,
+    const p = {
+      position: new THREE.Vector3(),
+      rotation: new THREE.Euler(),
       fallSpeed: 0.25 + Math.random() * 0.35,
       swaySpeed: 0.6 + Math.random() * 0.8,
       swayAmount: 0.3 + Math.random() * 0.5,
       spinSpeed: (Math.random() - 0.5) * 1.5,
       phase: Math.random() * Math.PI * 2,
-    });
+    };
+    resetPetal(p, true);
+    petals.push(p);
   }
 
-  function resetPetal(mesh, randomHeight) {
-    mesh.position.set(
+  function resetPetal(p, randomHeight) {
+    p.position.set(
       (Math.random() - 0.5) * 8,
       randomHeight ? Math.random() * 5 : 5 + Math.random() * 1.5,
       -2.6 + Math.random() * 1.4,
     );
-    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    p.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
   }
 
   function update(dt, t) {
-    for (const p of petals) {
-      p.mesh.position.y -= p.fallSpeed * dt;
-      p.mesh.position.x += Math.sin(t * p.swaySpeed + p.phase) * p.swayAmount * dt;
-      p.mesh.rotation.z += p.spinSpeed * dt;
-      p.mesh.rotation.x += p.spinSpeed * 0.6 * dt;
-      if (p.mesh.position.y < -0.2) resetPetal(p.mesh, false);
-    }
+    petals.forEach((p, i) => {
+      p.position.y -= p.fallSpeed * dt;
+      p.position.x += Math.sin(t * p.swaySpeed + p.phase) * p.swayAmount * dt;
+      p.rotation.z += p.spinSpeed * dt;
+      p.rotation.x += p.spinSpeed * 0.6 * dt;
+      if (p.position.y < -0.2) resetPetal(p, false);
+
+      dummy.position.copy(p.position);
+      dummy.rotation.copy(p.rotation);
+      dummy.updateMatrix();
+      instanced.setMatrixAt(i, dummy.matrix);
+    });
+    instanced.instanceMatrix.needsUpdate = true;
   }
 
-  return { group, update };
+  return { group: instanced, update };
 }
