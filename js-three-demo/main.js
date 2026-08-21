@@ -5,6 +5,11 @@ import { buildBackWall, buildBambooCluster, createPetalSystem } from './scene-en
 import { buildCounter, buildChopStation, buildCookStation, buildPlateStation } from './kitchen-stations.js';
 import { createQueueSim } from './queue-sim.js';
 import { LEVELS } from '../js/data/levels.js';
+import { isRushHour } from '../js/game/customerTypes.js';
+import { calculateStars } from '../js/game/scoring.js';
+import { formatTime } from '../js/utils/helpers.js';
+
+const level = LEVELS[0]; // Onigiri — el primer nivel real del juego
 
 const wrap = document.getElementById('canvas-wrap');
 
@@ -129,8 +134,58 @@ const chefs = [
   return chef;
 });
 
+// --- HUD real: monedas, timer, combo y hora pico (mismas piezas que
+// KitchenScene: serveReward, isRushHour, calculateStars) ---
+const coinsEl = document.getElementById('coins-badge');
+const timerEl = document.getElementById('timer-badge');
+const comboEl = document.getElementById('combo-badge');
+const rushEl = document.getElementById('rush-badge');
+const resultOverlay = document.getElementById('result-overlay');
+const resultStars = document.getElementById('result-stars');
+const resultCoins = document.getElementById('result-coins');
+const btnRestart = document.getElementById('btn-restart');
+
+let coinsEarned = 0;
+let timeLeft = level.duration;
+let roundOver = false;
+
+function startRound() {
+  coinsEarned = 0;
+  timeLeft = level.duration;
+  roundOver = false;
+  coinsEl.textContent = `💰 ${coinsEarned}`;
+  timerEl.textContent = formatTime(timeLeft);
+  timerEl.classList.remove('urgent');
+  comboEl.classList.add('hidden');
+  rushEl.classList.add('hidden');
+  resultOverlay.classList.add('hidden');
+}
+
+function endRound() {
+  roundOver = true;
+  const stars = calculateStars(coinsEarned, level.starGoals);
+  resultStars.textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+  resultCoins.textContent = `💰 ${coinsEarned} monedas`;
+  resultOverlay.classList.remove('hidden');
+}
+
+btnRestart.addEventListener('click', () => {
+  queueSim.reset();
+  startRound();
+});
+
 // --- Cola de clientes real, nivel Onigiri (el primero del juego real) ---
-const queueSim = createQueueSim({ scene, camera, level: LEVELS[0], platePosition: plateStation.position });
+const queueSim = createQueueSim({
+  scene, camera, level, platePosition: plateStation.position,
+  onServed: (coins, combo) => {
+    coinsEarned += coins;
+    coinsEl.textContent = `💰 ${coinsEarned}`;
+    comboEl.textContent = `🔥 x${combo}`;
+    comboEl.classList.toggle('hidden', combo < 2);
+  },
+  onLeft: () => comboEl.classList.add('hidden'),
+});
+startRound();
 
 let pointerDownAt = null;
 renderer.domElement.addEventListener('pointerdown', (e) => {
@@ -160,8 +215,18 @@ function animate() {
   const t = clock.getElapsedTime();
   const dt = clock.getDelta();
 
-  queueSim.update(dt, t);
+  if (!roundOver) {
+    timeLeft = Math.max(0, timeLeft - dt * 1000);
+    timerEl.textContent = formatTime(timeLeft);
+    timerEl.classList.toggle('urgent', timeLeft < 10000);
+    rushEl.classList.toggle('hidden', !isRushHour(timeLeft, level.duration));
 
+    queueSim.update(dt, t, timeLeft);
+    if (timeLeft <= 0) endRound();
+  }
+
+  // El resto de la escena (chefs, pétalos, la llama) sigue con vida aunque
+  // la ronda haya terminado — solo se congela la cola de clientes.
   chefs.forEach((chef) => {
     const phase = chef.userData.phase;
     chef.position.y = Math.sin(t * 1.4 + phase) * 0.025;

@@ -3,8 +3,9 @@ import { buildCustomer } from './customer3d.js';
 import { buildDishSprite } from './dish-sprite.js';
 import { Customer } from '../js/game/Customer.js';
 import { spawnOrder } from '../js/game/Order.js';
-import { patienceForOrder, pickCustomerType } from '../js/game/customerTypes.js';
+import { patienceForOrder, pickCustomerType, isRushHour, RUSH_SPAWN_FACTOR } from '../js/game/customerTypes.js';
 import { CUSTOMERS as CUSTOMER_DESIGNS, moodFor } from '../js/game/avatars.js';
+import { serveReward } from '../js/game/interaction.js';
 
 const ENTRY_X = -6.5;
 const EXIT_HAPPY_X = 6.5;
@@ -19,10 +20,11 @@ const MOOD_TO_COLOR = { contento: '#4dd67a', esperando: '#a8d67a', impaciente: '
 // (Customer, spawnOrder, patienceForOrder, pickCustomerType, moodFor) para
 // que la paciencia, el tipo de cliente y el pedido no sean inventados para
 // la demo — es el nivel Onigiri real corriendo, solo que dibujado en 3D.
-export function createQueueSim({ scene, camera, level, platePosition }) {
+export function createQueueSim({ scene, camera, level, platePosition, onServed, onLeft }) {
   const slots = buildSlots(level.maxCustomers);
   const active = [];
   let spawnTimer = randomSpawnDelay();
+  let combo = 0;
 
   function randomSpawnDelay() {
     const [min, max] = level.spawnInterval;
@@ -140,6 +142,12 @@ export function createQueueSim({ scene, camera, level, platePosition }) {
     entry.walkTo = happy ? EXIT_HAPPY_X : ENTRY_X;
     entry.walkT = 0;
     scene.remove(entry.bubble.mesh);
+    // Irse enojado corta la racha, igual que en KitchenScene — la prisa
+    // tiene costo, no solo cuando se quema un platillo.
+    if (!happy) {
+      combo = 0;
+      onLeft?.();
+    }
   }
 
   // ndcX/ndcY: coordenadas de clic ya normalizadas a [-1, 1] (las calcula
@@ -155,22 +163,36 @@ export function createQueueSim({ scene, camera, level, platePosition }) {
 
       const recipe = entry.game.pendingRecipes()[0];
       if (!recipe) return true;
+      const patienceRatio = entry.game.patienceRatio();
+
+      // Mismo cálculo y orden que KitchenScene.onCustomerTap: el pago usa
+      // la racha ANTES de subirla — la racha solo sube al completar el
+      // pedido entero, pero cada platillo entregado paga, sea parcial o no.
+      const pago = entry.game.type ? entry.game.type.payMultiplier : 1;
+      const coins = serveReward(recipe.price * pago, patienceRatio, 1, combo, 0);
       const done = entry.game.deliver(recipe.id);
       spawnFlyingDish(entry, recipe, done);
+      if (done) combo += 1;
+      onServed?.(coins, combo);
+
       if (!done) {
-        const mood = moodFor(entry.game.patienceRatio());
-        redrawBubble(entry, entry.game.patienceRatio(), MOOD_TO_COLOR[mood.label]);
+        const mood = moodFor(patienceRatio);
+        redrawBubble(entry, patienceRatio, MOOD_TO_COLOR[mood.label]);
       }
       return true;
     }
     return false;
   }
 
-  function update(dt, t) {
+  // timeLeftMs: tiempo restante de la ronda (en ms) — solo para saber si
+  // estamos en hora pico, igual que KitchenScene con isRushHour().
+  function update(dt, t, timeLeftMs = level.duration) {
+    const rush = isRushHour(timeLeftMs, level.duration);
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
       trySpawn();
-      spawnTimer = randomSpawnDelay();
+      const delay = randomSpawnDelay();
+      spawnTimer = rush ? delay * RUSH_SPAWN_FACTOR : delay;
     }
 
     for (let i = active.length - 1; i >= 0; i--) {
@@ -251,7 +273,20 @@ export function createQueueSim({ scene, camera, level, platePosition }) {
     }
   }
 
-  return { update, tryServe };
+  // Para el botón "Jugar de nuevo": limpia a todos los clientes y platillos
+  // en vuelo de la escena y regresa la simulación a su estado inicial.
+  function reset() {
+    for (const entry of active) {
+      scene.remove(entry.mesh);
+      scene.remove(entry.bubble.mesh);
+      entry.flyingDishes.forEach((f) => scene.remove(f.sprite));
+    }
+    active.length = 0;
+    combo = 0;
+    spawnTimer = randomSpawnDelay();
+  }
+
+  return { update, tryServe, reset };
 }
 
 function buildSlots(count) {

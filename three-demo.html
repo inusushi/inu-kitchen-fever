@@ -18,6 +18,32 @@
     .tag { font-size: 11px; color: #b8aec2; font-family: ui-monospace, monospace; }
     #canvas-wrap { position: fixed; inset: 0; }
     #hint { position: fixed; bottom: 16px; left: 0; right: 0; text-align: center; font-size: 12px; color: #b8aec2; z-index: 2; }
+
+    .badge {
+      font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 999px;
+      background: #2a2233; border: 1px solid #4a3d5a; white-space: nowrap;
+    }
+    .badge.hidden { display: none; }
+    #combo-badge { background: linear-gradient(135deg, #ff8a3d, #ffcf5c); color: #2a1a0a; border-color: transparent; }
+    #rush-badge { background: linear-gradient(135deg, #ff5a5a, #ff8a3d); color: #2a0a0a; border-color: transparent; }
+    #timer-badge.urgent { background: #4a1e22; border-color: #ff5a5a; color: #ffb3b3; }
+
+    #result-overlay {
+      position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center;
+      background: #0e0c10cc; backdrop-filter: blur(3px);
+    }
+    #result-overlay.hidden { display: none; }
+    #result-card {
+      background: #221a29; border: 1px solid #4a3d5a; border-radius: 20px;
+      padding: 28px 36px; text-align: center; min-width: 240px;
+    }
+    #result-stars { font-size: 34px; letter-spacing: 4px; margin: 10px 0; }
+    #result-coins { font-size: 15px; color: #d8cfe0; margin-bottom: 18px; }
+    #btn-restart {
+      font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+      background: linear-gradient(135deg, #ff8a3d, #ffcf5c); color: #2a1a0a;
+      border: none; border-radius: 999px; padding: 10px 22px;
+    }
   </style>
 </head>
 <body>
@@ -26,10 +52,24 @@
       <h1>Escenario 3D — prueba con Three.js</h1>
       <div class="tag">nivel Onigiri real corriendo en 3D · el resto del juego sigue sin tocarse</div>
     </div>
-    <a href="index.html" style="color:#b8aec2; font-size:12px; margin-left:auto;">← Volver al juego</a>
+    <div id="rush-badge" class="badge hidden">⚡ ¡HORA PICO!</div>
+    <div id="combo-badge" class="badge hidden"></div>
+    <div id="timer-badge" class="badge">1:15</div>
+    <div id="coins-badge" class="badge">💰 0</div>
+    <a href="index.html" style="color:#b8aec2; font-size:12px; margin-left:14px;">← Volver al juego</a>
   </div>
   <div id="canvas-wrap"></div>
   <div id="hint">Arrastra para rotar la cámara · rueda para acercar · toca a un cliente para atenderlo antes de que se le acabe la paciencia</div>
+
+  <div id="result-overlay" class="hidden">
+    <div id="result-card">
+      <div>Ronda terminada</div>
+      <div id="result-stars">☆☆☆</div>
+      <div id="result-coins">💰 0 monedas</div>
+      <button id="btn-restart">▶ Jugar de nuevo</button>
+    </div>
+  </div>
+
   <script type="module" src="js-three-demo/main.js"></script>
 </body>
 </html>
