@@ -285,7 +285,17 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
     active.length = 0;
     combo = 0;
     spawnTimer = randomSpawnDelay();
+    spawnInitialCustomers();
   }
+
+  // Que ya se vea vida en la barra desde el primer frame — sin esto, la
+  // escena arranca vacía y hay que esperar 3-5s (el spawnInterval real
+  // del nivel) a que aparezca el primer cliente.
+  function spawnInitialCustomers() {
+    trySpawn();
+    trySpawn();
+  }
+  spawnInitialCustomers();
 
   return { update, tryServe, reset };
 }

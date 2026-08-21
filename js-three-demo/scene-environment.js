@@ -27,7 +27,7 @@ export function buildBackWall({ width = 11, height = width / (1408 / 768) } = {}
 // muro del mural. Quedan más allá de por dónde entran/salen los
 // clientes (ver ENTRY_X/EXIT_HAPPY_X en queue-sim.js) para que nadie
 // camine "a través" de una pared.
-export function buildSideWalls({ x = 11, zFrom = -3.15, zTo = 6, height = 7 } = {}) {
+export function buildSideWalls({ x = 8.5, zFrom = -3.15, zTo = 6, height = 7 } = {}) {
   const mat = new THREE.MeshStandardMaterial({ color: '#171316', roughness: 0.9 });
   const geo = new THREE.PlaneGeometry(zTo - zFrom, height);
   const y = height / 2 - 0.1;
@@ -157,7 +157,10 @@ export function createPetalSystem(count = 26) {
 
   function resetPetal(p, randomHeight) {
     p.position.set(
-      (Math.random() - 0.5) * 8,
+      // Ancho ajustado a las paredes laterales (x=±8.5) — antes era ±4,
+      // de cuando el cuarto era solo el muro del fondo, y se veían como
+      // una franja angosta en medio de un cuarto ya mucho más grande.
+      (Math.random() - 0.5) * 16,
       randomHeight ? Math.random() * 5 : 5 + Math.random() * 1.5,
       -2.6 + Math.random() * 1.4,
     );

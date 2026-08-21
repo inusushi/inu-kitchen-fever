@@ -19,7 +19,10 @@ const ROOM_DARK = '#0e0c10';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(ROOM_DARK);
-scene.fog = new THREE.Fog(ROOM_DARK, 7, 15);
+// Rango de niebla ampliado junto con la cámara: con la vista más alejada
+// para que quepa el cuarto completo, el muro lateral queda a ~15 unidades
+// de la cámara — con el rango viejo (7-15) ya casi no se alcanzaba a ver.
+scene.fog = new THREE.Fog(ROOM_DARK, 9, 26);
 
 // Respaldo si el viewport todavía no tiene tamaño real (por ejemplo, un
 // panel de vista previa que aún no se ha mostrado en pantalla).
@@ -30,8 +33,14 @@ function viewportSize() {
 }
 
 const { w: initW, h: initH } = viewportSize();
-const camera = new THREE.PerspectiveCamera(40, initW / initH, 0.1, 100);
-camera.position.set(0, 2.2, 7);
+// Cámara más abierta y más atrás que en la Fase 1 (cuando solo existía
+// el muro del fondo) — para que el encuadre por defecto ya muestre todo
+// junto: los 2 chefs, la barra completa, la cola de clientes llegando, y
+// las 2 paredes laterales. Verificado proyectando las esquinas de cada
+// pared, los chefs, la barra y la entrada de clientes a coordenadas de
+// pantalla — los 9 puntos caen dentro del cuadro con margen.
+const camera = new THREE.PerspectiveCamera(56, initW / initH, 0.1, 100);
+camera.position.set(0, 4, 9.9);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -41,20 +50,28 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 wrap.append(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 1.2, -1.4);
+controls.target.set(0, 1.4, -0.6);
 controls.enableDamping = true;
 controls.minDistance = 3.5;
 controls.maxDistance = 12;
 controls.maxPolarAngle = Math.PI * 0.5;
 // Sin la "cuarta pared", la cámara es el público de un foro de teatro —
 // puede acercarse o alejarse, pero no rodear el set hasta salirse por
-// donde estarían las paredes laterales (con maxDistance=12, ±60° deja el
-// peor caso en x≈10.4, dentro de las paredes en x=±11).
-controls.minAzimuthAngle = -Math.PI / 3;
-controls.maxAzimuthAngle = Math.PI / 3;
+// donde estarían las paredes laterales (con maxDistance=12 y las paredes
+// en x=±8.5, el peor caso — azimuth y distancia al tope — da x≈10.39 si
+// no se limita; ±43° lo deja en x≈8.19, dentro de las paredes).
+controls.minAzimuthAngle = -Math.PI * (43 / 180);
+controls.maxAzimuthAngle = Math.PI * (43 / 180);
 
 // --- Luces: cuarto oscuro, con un acento cálido sobre el muro pintado ---
-scene.add(new THREE.AmbientLight('#4a3f55', 0.35));
+scene.add(new THREE.AmbientLight('#4a3f55', 0.45));
+
+// Luz de relleno pareja para todo el cuarto — sin dirección en X/Z (solo
+// depende de qué tan "hacia arriba" mira cada superficie), así que las
+// dos paredes laterales, que antes se veían disparejas porque solo una
+// alcanzaba la luz principal, ahora reciben exactamente lo mismo.
+const roomFill = new THREE.HemisphereLight('#5a4f68', '#171316', 0.55);
+scene.add(roomFill);
 
 // Luz de acento sobre el mural — la razón de que el gris claro del muro
 // se lea contra el resto del cuarto en negro.
@@ -65,7 +82,7 @@ wallLight.castShadow = false;
 scene.add(wallLight, wallLight.target);
 
 // Luz principal sobre el mostrador/personajes, con sombra.
-const key = new THREE.DirectionalLight('#ffe3b8', 0.9);
+const key = new THREE.DirectionalLight('#ffe3b8', 0.95);
 key.position.set(3, 5, 4);
 key.castShadow = true;
 key.shadow.mapSize.set(1024, 1024);
@@ -75,7 +92,7 @@ key.shadow.camera.top = 6;
 key.shadow.camera.bottom = -6;
 scene.add(key);
 
-const rim = new THREE.DirectionalLight('#c68fff', 0.25);
+const rim = new THREE.DirectionalLight('#c68fff', 0.35);
 rim.position.set(-4, 3, -2);
 scene.add(rim);
 
@@ -104,7 +121,7 @@ bambooRight.position.set(4.3, 0, -1.6);
 scene.add(bambooRight);
 
 // --- Pétalos flotando frente al muro ---
-const petals = createPetalSystem(30);
+const petals = createPetalSystem(40);
 scene.add(petals.group);
 
 // --- Barra de la cocina, con las 3 estaciones reales del juego (chop,
@@ -128,12 +145,11 @@ const plateStation = buildPlateStation();
 plateStation.position.set(2.1, counterTopY, stationZ);
 scene.add(plateStation);
 
-// --- Un cocinero parado detrás de cada estación (COOK_AVATARS en
-// js/game/avatars.js: los 3 son emoji de chef, solo cambia el acento) ---
+// --- 2 cocineros, en chop y plate — cook se queda sin chef propio, el
+// fuego animado ya le da vida a esa estación por su cuenta ---
 const chefZ = stationZ - 0.65;
 const chefs = [
   { x: -2.1, accent: '#4a4a52', phase: 0 },
-  { x: 0, accent: '#a13c22', phase: 1.1 },
   { x: 2.1, accent: '#2d6e6e', phase: 2.3 },
 ].map(({ x, accent, phase }) => {
   const chef = buildChef({ accent });
