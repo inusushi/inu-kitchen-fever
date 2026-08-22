@@ -7,10 +7,10 @@ import { patienceForOrder, pickCustomerType, isRushHour, RUSH_SPAWN_FACTOR } fro
 import { CUSTOMERS as CUSTOMER_DESIGNS, moodFor } from '../js/game/avatars.js';
 import { serveReward } from '../js/game/interaction.js';
 
-const ENTRY_X = 8.3; // cerca de la pared derecha, por donde "entran" a recoger
+const ENTRY_X = 7.7; // cerca de la pared derecha, por donde "entran" a recoger
 const SLOT_POSITIONS = [
-  { x: 6.3, z: 0.3 },
-  { x: 7.7, z: 0.3 },
+  { x: 5.7, z: 0.3 },
+  { x: 7.1, z: 0.3 },
 ];
 const WALK_DURATION = 1.1; // tramo corto — la ventanilla está cerca de por dónde entran
 const FLY_DURATION = 0.55;

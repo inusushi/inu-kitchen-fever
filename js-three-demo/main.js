@@ -42,7 +42,24 @@ const { w: initW, h: initH } = viewportSize();
 // las 2 paredes laterales. Verificado proyectando las esquinas de cada
 // pared, los chefs, la barra y la entrada de clientes a coordenadas de
 // pantalla — los 9 puntos caen dentro del cuadro con margen.
-const camera = new THREE.PerspectiveCamera(56, initW / initH, 0.1, 100);
+const BASE_VFOV_DEG = 56;
+// El campo de visión vertical fijo funciona bien en pantallas anchas,
+// pero en ventanas angostas o cuadradas (tablet, ventana redimensionada)
+// el campo HORIZONTAL se encoge junto con el aspect ratio y esconde lo
+// que está a los lados (como la ventanilla para llevar, cerca del borde
+// derecho). Por debajo de un aspect de referencia 16:9, se abre el FOV
+// vertical lo necesario para mantener el mismo campo horizontal que a
+// 16:9 — con un tope para no llegar a verse en fisheye.
+const REF_ASPECT = 16 / 9;
+const MAX_VFOV_DEG = 82;
+function cameraFovFor(aspect) {
+  if (aspect >= REF_ASPECT) return BASE_VFOV_DEG;
+  const tanHalfRefH = Math.tan(THREE.MathUtils.degToRad(BASE_VFOV_DEG) / 2) * REF_ASPECT;
+  const vFovNeeded = THREE.MathUtils.radToDeg(2 * Math.atan(tanHalfRefH / aspect));
+  return Math.min(vFovNeeded, MAX_VFOV_DEG);
+}
+
+const camera = new THREE.PerspectiveCamera(cameraFovFor(initW / initH), initW / initH, 0.1, 100);
 camera.position.set(0, 4, 9.9);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -175,7 +192,7 @@ const chefs = [
 // comparte la misma cocina (chop/cook/plate) que las mesas; solo cambia
 // por dónde llega la gente y a dónde se le entrega su pedido. ---
 const takeoutWindow = buildTakeoutWindow();
-takeoutWindow.position.set(7, 0, -1.3);
+takeoutWindow.position.set(6.4, 0, -1.3);
 scene.add(takeoutWindow);
 
 // --- HUD real: monedas, timer, combo y hora pico (mismas piezas que
@@ -326,6 +343,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
 window.addEventListener('resize', () => {
   const { w, h } = viewportSize();
   camera.aspect = w / h;
+  camera.fov = cameraFovFor(camera.aspect);
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
 });
