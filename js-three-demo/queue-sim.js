@@ -12,6 +12,7 @@ const EXIT_HAPPY_X = 6.5;
 const SLOT_SPREAD = 2;
 const WALK_DURATION = 2.1; // segundos para cruzar toda la barra
 const FLY_DURATION = 0.55; // segundos que tarda el platillo en llegar de la barra al cliente
+const SHAKE_DURATION = 0.3; // segundos que dura la sacudida de "toque rechazado"
 
 const MOOD_TO_FACE = { contento: 'happy', esperando: 'meh', impaciente: 'meh', enojado: 'annoyed' };
 const MOOD_TO_COLOR = { contento: '#4dd67a', esperando: '#a8d67a', impaciente: '#ffcc33', enojado: '#ff5a5a' };
@@ -151,37 +152,55 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
   }
 
   // ndcX/ndcY: coordenadas de clic ya normalizadas a [-1, 1] (las calcula
-  // main.js a partir del canvas, así este módulo no toca el DOM).
-  function tryServe(ndcX, ndcY) {
+  // main.js a partir del canvas, así este módulo no toca el DOM). Devuelve
+  // el cliente tocado (esperando) sin decidir qué hacer con él — esa
+  // decisión (servir / arrancar un platillo / rechazar) es de
+  // decideCustomerTap, la misma función que usa KitchenScene, orquestada
+  // desde main.js porque necesita el estado de las estaciones también.
+  function getCustomerEntryAt(ndcX, ndcY) {
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera({ x: ndcX, y: ndcY }, camera);
 
     for (const entry of active) {
       if (entry.state !== 'waiting') continue;
       const hits = raycaster.intersectObjects(entry.mesh.children, true);
-      if (!hits.length) continue;
-
-      const recipe = entry.game.pendingRecipes()[0];
-      if (!recipe) return true;
-      const patienceRatio = entry.game.patienceRatio();
-
-      // Mismo cálculo y orden que KitchenScene.onCustomerTap: el pago usa
-      // la racha ANTES de subirla — la racha solo sube al completar el
-      // pedido entero, pero cada platillo entregado paga, sea parcial o no.
-      const pago = entry.game.type ? entry.game.type.payMultiplier : 1;
-      const coins = serveReward(recipe.price * pago, patienceRatio, 1, combo, 0);
-      const done = entry.game.deliver(recipe.id);
-      spawnFlyingDish(entry, recipe, done);
-      if (done) combo += 1;
-      onServed?.(coins, combo);
-
-      if (!done) {
-        const mood = moodFor(patienceRatio);
-        redrawBubble(entry, patienceRatio, MOOD_TO_COLOR[mood.label]);
-      }
-      return true;
+      if (hits.length) return entry;
     }
-    return false;
+    return null;
+  }
+
+  // Los objetos Customer reales de todos los clientes activos — los que
+  // necesita decideCustomerTap para calcular demanda/oferta entre todos,
+  // no solo el que se tocó.
+  function getActiveCustomerGames() {
+    return active.map((e) => e.game);
+  }
+
+  // Entrega el platillo ya listo (decideCustomerTap ya decidió que aplica).
+  function serveCustomerEntry(entry, recipe) {
+    const patienceRatio = entry.game.patienceRatio();
+
+    // Mismo cálculo y orden que KitchenScene.onCustomerTap: el pago usa
+    // la racha ANTES de subirla — la racha solo sube al completar el
+    // pedido entero, pero cada platillo entregado paga, sea parcial o no.
+    const pago = entry.game.type ? entry.game.type.payMultiplier : 1;
+    const coins = serveReward(recipe.price * pago, patienceRatio, 1, combo, 0);
+    const done = entry.game.deliver(recipe.id);
+    spawnFlyingDish(entry, recipe, done);
+    if (done) combo += 1;
+    onServed?.(coins, combo);
+
+    if (!done) {
+      const mood = moodFor(patienceRatio);
+      redrawBubble(entry, patienceRatio, MOOD_TO_COLOR[mood.label]);
+    }
+  }
+
+  // Sacudida breve cuando el toque no sirve de nada (sin mesa libre, o ya
+  // hay suficiente de ese platillo preparándose) — mismo caso "reject"
+  // que en KitchenScene, solo que ahí es una clase CSS y acá una animación.
+  function rejectCustomerEntry(entry) {
+    entry.shakeT = 0;
   }
 
   // timeLeftMs: tiempo restante de la ronda (en ms) — solo para saber si
@@ -242,6 +261,12 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
         const phase = t * 1.6 + entry.phase;
         mesh.position.y = Math.sin(phase) * 0.03;
         mesh.rotation.y = Math.sin(t * 0.4 + entry.phase) * 0.12;
+
+        if (entry.shakeT !== undefined && entry.shakeT < SHAKE_DURATION) {
+          entry.shakeT += dt;
+          const decay = 1 - entry.shakeT / SHAKE_DURATION;
+          mesh.rotation.z += Math.sin(entry.shakeT * 40) * 0.12 * decay;
+        }
       }
 
       // Platillos en vuelo hacia este cliente (si el estado cambió a
@@ -297,7 +322,10 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
   }
   spawnInitialCustomers();
 
-  return { update, tryServe, reset };
+  return {
+    update, reset,
+    getCustomerEntryAt, getActiveCustomerGames, serveCustomerEntry, rejectCustomerEntry,
+  };
 }
 
 function buildSlots(count) {

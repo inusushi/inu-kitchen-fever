@@ -20,6 +20,67 @@ export function buildBackWall({ width = 11, height = width / (1408 / 768) } = {}
   return wall;
 }
 
+// --- Piso de bambú ---
+// Duelas pintadas en canvas (mismo truco que las caras y el mural viejo):
+// tono cálido, una franja por duela con su propia variación de color, línea
+// de junta entre cada una y "nudos" horizontales sueltos, para que se lea
+// como bambú y no como madera genérica. Se repite (RepeatWrapping) sobre
+// el piso circular, no es una sola imagen estirada.
+export function buildFloorTexture({ repeat = 18 } = {}) {
+  const w = 256;
+  const h = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  const plankW = w / 4;
+  for (let i = 0; i < 4; i++) {
+    const shade = 0.85 + Math.random() * 0.3;
+    const r = Math.round(90 * shade);
+    const g = Math.round(62 * shade);
+    const b = Math.round(38 * shade);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(i * plankW, 0, plankW, h);
+
+    // Veta: un par de líneas horizontales suaves por duela.
+    ctx.strokeStyle = `rgba(0,0,0,0.12)`;
+    ctx.lineWidth = 1;
+    for (let n = 0; n < 3; n++) {
+      const y = (n + 0.5) * (h / 3) + (Math.random() * 10 - 5);
+      ctx.beginPath();
+      ctx.moveTo(i * plankW + 4, y);
+      ctx.lineTo(i * plankW + plankW - 4, y);
+      ctx.stroke();
+    }
+
+    // "Nudo" del bambú: un arco oscuro cruzando la duela.
+    const knotY = h * (0.25 + Math.random() * 0.5);
+    ctx.strokeStyle = 'rgba(20,12,6,0.35)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(i * plankW, knotY);
+    ctx.quadraticCurveTo(i * plankW + plankW / 2, knotY + 6, i * plankW + plankW, knotY - 4);
+    ctx.stroke();
+
+    // Junta entre duelas.
+    ctx.strokeStyle = 'rgba(15,9,5,0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(i * plankW, 0);
+    ctx.lineTo(i * plankW, h);
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeat, repeat);
+  texture.anisotropy = 4;
+  return texture;
+}
+
 // --- Paredes laterales: cuarto de 3 paredes, sin la "cuarta pared" que
 // mira a cámara — como un foro de teatro, se ve hacia adentro pero nada
 // bloquea la vista del público. Mismo tono oscuro que el piso, para que

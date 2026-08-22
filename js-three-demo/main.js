@@ -1,13 +1,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildChef } from './chef3d.js';
-import { buildBackWall, buildSideWalls, buildBambooCluster, createPetalSystem } from './scene-environment.js';
+import { buildBackWall, buildSideWalls, buildBambooCluster, createPetalSystem, buildFloorTexture } from './scene-environment.js';
 import { buildCounter, buildChopStation, buildCookStation, buildPlateStation } from './kitchen-stations.js';
 import { createQueueSim } from './queue-sim.js';
+import { createKitchenSim } from './kitchen-sim.js';
 import { LEVELS } from '../js/data/levels.js';
 import { isRushHour } from '../js/game/customerTypes.js';
 import { calculateStars } from '../js/game/scoring.js';
 import { formatTime } from '../js/utils/helpers.js';
+import { decideCustomerTap } from '../js/game/interaction.js';
 
 const level = LEVELS[0]; // Onigiri — el primer nivel real del juego
 
@@ -96,10 +98,10 @@ const rim = new THREE.DirectionalLight('#c68fff', 0.35);
 rim.position.set(-4, 3, -2);
 scene.add(rim);
 
-// --- Piso oscuro ---
+// --- Piso de bambú ---
 const floor = new THREE.Mesh(
   new THREE.CircleGeometry(9, 48),
-  new THREE.MeshStandardMaterial({ color: '#171316', roughness: 0.85 }),
+  new THREE.MeshStandardMaterial({ map: buildFloorTexture(), roughness: 0.85 }),
 );
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
@@ -144,6 +146,15 @@ scene.add(cookStation.group);
 const plateStation = buildPlateStation();
 plateStation.position.set(2.1, counterTopY, stationZ);
 scene.add(plateStation);
+
+// --- Cocina real: cuchillo (chop) y armado (plate) hay que trabajarlos a
+// mano tocando la estación — cook existe pero ninguna receta de Onigiri
+// la usa. Mismas clases Station/Plate y mismo límite de 2 mesas en
+// paralelo que KitchenScene. ---
+const kitchenSim = createKitchenSim({
+  scene, camera,
+  stationMeshes: { chop: chopStation, cook: cookStation.group, plate: plateStation },
+});
 
 // --- 2 cocineros, en chop y plate — cook se queda sin chef propio, el
 // fuego animado ya le da vida a esa estación por su cuenta ---
@@ -196,6 +207,7 @@ function endRound() {
 
 btnRestart.addEventListener('click', () => {
   queueSim.reset();
+  kitchenSim.reset();
   startRound();
 });
 
@@ -225,7 +237,31 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   const rect = renderer.domElement.getBoundingClientRect();
   const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   const ndcY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
-  queueSim.tryServe(ndcX, ndcY);
+
+  // Estaciones primero: tocar el cuchillo o la mesa de armado avanza el
+  // plato que ya esté esperando ahí.
+  const stationType = kitchenSim.getStationTypeAt(ndcX, ndcY);
+  if (stationType) {
+    kitchenSim.onStationTap(stationType);
+    return;
+  }
+
+  // Si no, ¿tocaste a un cliente? decideCustomerTap es la misma función
+  // que usa KitchenScene: decide entre servir (ya hay un plato listo para
+  // él), arrancar uno nuevo en una mesa libre, o rechazar el toque.
+  const entry = queueSim.getCustomerEntryAt(ndcX, ndcY);
+  if (!entry) return;
+
+  const decision = decideCustomerTap(entry.game, kitchenSim.slots, queueSim.getActiveCustomerGames());
+  if (decision.action === 'serve') {
+    const recipe = kitchenSim.slots[decision.slotIndex].plate.recipe;
+    queueSim.serveCustomerEntry(entry, recipe);
+    kitchenSim.clearSlot(decision.slotIndex);
+  } else if (decision.action === 'start') {
+    kitchenSim.startPlate(decision.recipe, decision.slotIndex);
+  } else if (decision.action === 'reject') {
+    queueSim.rejectCustomerEntry(entry);
+  }
 });
 
 window.addEventListener('resize', () => {
@@ -253,6 +289,7 @@ function animate() {
     rushEl.classList.toggle('hidden', !isRushHour(timeLeft, level.duration));
 
     queueSim.update(dt, t, timeLeft);
+    kitchenSim.update(dt);
     if (timeLeft <= 0) endRound();
   }
 
