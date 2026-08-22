@@ -81,6 +81,41 @@ export function buildFloorTexture({ repeat = 18 } = {}) {
   return texture;
 }
 
+// --- Mesa de bambú para los clientes ---
+// Procedural mientras llega la referencia real: 3 patas de bambú (mismo
+// cilindro+anillo que buildBambooCluster) y un tablero redondo con la
+// misma textura de duelas que el piso, solo que repetida menos veces.
+export function buildBambooTable({ legCount = 3, radius = 0.4, height = 0.85 } = {}) {
+  const group = new THREE.Group();
+  const legMat = new THREE.MeshStandardMaterial({ color: '#4f7a3d', roughness: 0.55 });
+  const ringMat = new THREE.MeshStandardMaterial({ color: '#33512a', roughness: 0.6 });
+  const topMat = new THREE.MeshStandardMaterial({ map: buildFloorTexture({ repeat: 3 }), roughness: 0.6 });
+
+  for (let i = 0; i < legCount; i++) {
+    const angle = (i / legCount) * Math.PI * 2 + Math.PI / legCount;
+    const lx = Math.cos(angle) * radius * 0.65;
+    const lz = Math.sin(angle) * radius * 0.65;
+
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, height, 8), legMat);
+    leg.position.set(lx, height / 2, lz);
+    leg.castShadow = true;
+    group.add(leg);
+
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.038, 0.008, 6, 12), ringMat);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(lx, height * 0.55, lz);
+    group.add(ring);
+  }
+
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 0.05, 24), topMat);
+  top.position.y = height;
+  top.castShadow = true;
+  top.receiveShadow = true;
+  group.add(top);
+
+  return group;
+}
+
 // --- Paredes laterales: cuarto de 3 paredes, sin la "cuarta pared" que
 // mira a cámara — como un foro de teatro, se ve hacia adentro pero nada
 // bloquea la vista del público. Mismo tono oscuro que el piso, para que

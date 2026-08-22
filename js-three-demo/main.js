@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildChef } from './chef3d.js';
 import { buildBackWall, buildSideWalls, buildBambooCluster, createPetalSystem, buildFloorTexture } from './scene-environment.js';
 import { buildCounter, buildChopStation, buildCookStation, buildPlateStation } from './kitchen-stations.js';
-import { createQueueSim } from './queue-sim.js';
+import { createQueueSim, MAX_TABLES, TABLE_COST } from './queue-sim.js';
 import { createKitchenSim } from './kitchen-sim.js';
 import { LEVELS } from '../js/data/levels.js';
 import { isRushHour } from '../js/game/customerTypes.js';
@@ -180,10 +180,34 @@ const resultOverlay = document.getElementById('result-overlay');
 const resultStars = document.getElementById('result-stars');
 const resultCoins = document.getElementById('result-coins');
 const btnRestart = document.getElementById('btn-restart');
+const btnBuyTable = document.getElementById('btn-buy-table');
 
 let coinsEarned = 0;
 let timeLeft = level.duration;
 let roundOver = false;
+
+// Comprar una mesa: cuesta TABLE_COST monedas, sube el tope de clientes en
+// paralelo y les da más paciencia a todos (ver TABLE_PATIENCE_BONUS_MS en
+// queue-sim.js). Tope de MAX_TABLES mesas.
+function updateBuyTableButton() {
+  const count = queueSim.getTableCount();
+  if (count >= MAX_TABLES) {
+    btnBuyTable.textContent = `🪑 Mesas al máximo · ${count}/${MAX_TABLES}`;
+    btnBuyTable.disabled = true;
+  } else {
+    btnBuyTable.textContent = `🪑 Comprar mesa · ${count}/${MAX_TABLES} (${TABLE_COST}💰)`;
+    btnBuyTable.disabled = coinsEarned < TABLE_COST;
+  }
+}
+
+btnBuyTable.addEventListener('click', () => {
+  const count = queueSim.getTableCount();
+  if (count >= MAX_TABLES || coinsEarned < TABLE_COST) return;
+  coinsEarned -= TABLE_COST;
+  coinsEl.textContent = `💰 ${coinsEarned}`;
+  queueSim.buyTable();
+  updateBuyTableButton();
+});
 
 function startRound() {
   coinsEarned = 0;
@@ -195,6 +219,7 @@ function startRound() {
   comboEl.classList.add('hidden');
   rushEl.classList.add('hidden');
   resultOverlay.classList.add('hidden');
+  updateBuyTableButton();
 }
 
 function endRound() {
@@ -217,6 +242,7 @@ const queueSim = createQueueSim({
   onServed: (coins, combo) => {
     coinsEarned += coins;
     coinsEl.textContent = `💰 ${coinsEarned}`;
+    updateBuyTableButton();
     comboEl.textContent = `🔥 x${combo}`;
     comboEl.classList.toggle('hidden', combo < 2);
   },

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildCustomer } from './customer3d.js';
 import { buildDishSprite, disposeDishSprite } from './dish-sprite.js';
+import { buildBambooTable } from './scene-environment.js';
 import { Customer } from '../js/game/Customer.js';
 import { spawnOrder } from '../js/game/Order.js';
 import { patienceForOrder, pickCustomerType, isRushHour, RUSH_SPAWN_FACTOR } from '../js/game/customerTypes.js';
@@ -9,10 +10,25 @@ import { serveReward } from '../js/game/interaction.js';
 
 const ENTRY_X = -6.5;
 const EXIT_HAPPY_X = 6.5;
-const SLOT_SPREAD = 2;
 const WALK_DURATION = 2.1; // segundos para cruzar toda la barra
 const FLY_DURATION = 0.55; // segundos que tarda el platillo en llegar de la barra al cliente
 const SHAKE_DURATION = 0.3; // segundos que dura la sacudida de "toque rechazado"
+
+// Pedido de Dany: 5s extra de paciencia base — ahora que servir pasa por
+// cuchillo + armado (antes era instantáneo), la paciencia original se
+// sentía corta. Posiciones de mesa fijas para hasta 6 — comprar una mesa
+// nunca mueve las que ya existen (un cliente sentado no se puede
+// teletransportar sin verse roto).
+export const PATIENCE_BONUS_MS = 5000;
+export const START_TABLES = 3;
+export const MAX_TABLES = 6;
+export const TABLE_COST = 8000;
+const TABLE_PATIENCE_BONUS_MS = 2000; // por cada mesa comprada arriba de las 3 iniciales
+const TABLE_Z = 1.3; // un poco más cerca de cámara que el cliente (z=0.9), para no encimarse
+const SLOT_POSITIONS = [
+  { x: -2, z: 0.9 }, { x: 0, z: 0.9 }, { x: 2, z: 0.9 },
+  { x: -4, z: 0.9 }, { x: 4, z: 0.9 }, { x: -5.5, z: 0.9 },
+];
 
 const MOOD_TO_FACE = { contento: 'happy', esperando: 'meh', impaciente: 'meh', enojado: 'annoyed' };
 const MOOD_TO_COLOR = { contento: '#4dd67a', esperando: '#a8d67a', impaciente: '#ffcc33', enojado: '#ff5a5a' };
@@ -22,10 +38,20 @@ const MOOD_TO_COLOR = { contento: '#4dd67a', esperando: '#a8d67a', impaciente: '
 // que la paciencia, el tipo de cliente y el pedido no sean inventados para
 // la demo — es el nivel Onigiri real corriendo, solo que dibujado en 3D.
 export function createQueueSim({ scene, camera, level, platePosition, onServed, onLeft }) {
-  const slots = buildSlots(level.maxCustomers);
   const active = [];
   let spawnTimer = randomSpawnDelay();
   let combo = 0;
+  let tableCount = START_TABLES;
+  const tableMeshes = [];
+
+  function addTableMesh(index) {
+    const pos = SLOT_POSITIONS[index];
+    const table = buildBambooTable();
+    table.position.set(pos.x, 0, TABLE_Z);
+    scene.add(table);
+    tableMeshes.push(table);
+  }
+  for (let i = 0; i < START_TABLES; i++) addTableMesh(i);
 
   function randomSpawnDelay() {
     const [min, max] = level.spawnInterval;
@@ -33,7 +59,7 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
   }
 
   function freeSlotIndex() {
-    for (let i = 0; i < slots.length; i++) {
+    for (let i = 0; i < tableCount; i++) {
       if (!active.some((c) => c.slotIndex === i)) return i;
     }
     return -1;
@@ -45,13 +71,14 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
 
     const tipo = pickCustomerType(level);
     const recipes = spawnOrder(level).slice(0, tipo.maxOrderSize);
-    const patience = patienceForOrder(level.patience, recipes.length, tipo);
+    const tableBonus = (tableCount - START_TABLES) * TABLE_PATIENCE_BONUS_MS;
+    const patience = patienceForOrder(level.patience, recipes.length, tipo) + PATIENCE_BONUS_MS + tableBonus;
     const game = new Customer(recipes, patience);
     game.type = tipo;
 
     const design = CUSTOMER_DESIGNS[Math.floor(Math.random() * CUSTOMER_DESIGNS.length)];
     const mesh = buildCustomer({ outfit: design.outfit, mood: 'happy' });
-    const slot = slots[slotIndex];
+    const slot = SLOT_POSITIONS[slotIndex];
     mesh.position.set(ENTRY_X, 0, slot.z);
     scene.add(mesh);
 
@@ -66,6 +93,21 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
       lastBarDraw: 0,
       flyingDishes: [], pendingFlights: 0,
     });
+  }
+
+  // Para el botón "Comprar mesa": más mesas = más clientes atendidos en
+  // paralelo Y más paciencia para todos (una mesa de sobra se siente
+  // menos apurada). Nunca mueve mesas existentes, solo revela la
+  // siguiente posición fija de SLOT_POSITIONS.
+  function buyTable() {
+    if (tableCount >= MAX_TABLES) return false;
+    addTableMesh(tableCount);
+    tableCount++;
+    return true;
+  }
+
+  function getTableCount() {
+    return tableCount;
   }
 
   // El platillo sale de la estación de armado (plate) y viaja hasta el
@@ -300,7 +342,9 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
   }
 
   // Para el botón "Jugar de nuevo": limpia a todos los clientes y platillos
-  // en vuelo de la escena y regresa la simulación a su estado inicial.
+  // en vuelo de la escena y regresa la simulación a su estado inicial —
+  // incluyendo las mesas compradas, ya que también se compraron con
+  // monedas de esta ronda que también se reinician.
   function reset() {
     for (const entry of active) {
       scene.remove(entry.mesh);
@@ -310,6 +354,10 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
     active.length = 0;
     combo = 0;
     spawnTimer = randomSpawnDelay();
+
+    while (tableMeshes.length > START_TABLES) scene.remove(tableMeshes.pop());
+    tableCount = START_TABLES;
+
     spawnInitialCustomers();
   }
 
@@ -325,12 +373,8 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
   return {
     update, reset,
     getCustomerEntryAt, getActiveCustomerGames, serveCustomerEntry, rejectCustomerEntry,
+    buyTable, getTableCount,
   };
-}
-
-function buildSlots(count) {
-  const startX = -((count - 1) / 2) * SLOT_SPREAD;
-  return Array.from({ length: count }, (_, i) => ({ x: startX + i * SLOT_SPREAD, z: 0.9 }));
 }
 
 function roundRect(ctx, x, y, w, h, r) {

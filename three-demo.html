@@ -27,6 +27,11 @@
     #combo-badge { background: linear-gradient(135deg, #ff8a3d, #ffcf5c); color: #2a1a0a; border-color: transparent; }
     #rush-badge { background: linear-gradient(135deg, #ff5a5a, #ff8a3d); color: #2a0a0a; border-color: transparent; }
     #timer-badge.urgent { background: #4a1e22; border-color: #ff5a5a; color: #ffb3b3; }
+    #btn-buy-table {
+      font-family: inherit; cursor: pointer; min-height: 44px;
+      background: linear-gradient(135deg, #4dd67a, #2fae8f); color: #08251a; border-color: transparent;
+    }
+    #btn-buy-table:disabled { background: #2a2233; color: #8a8296; cursor: default; }
 
     #result-overlay {
       position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center;
@@ -56,6 +61,7 @@
     <div id="combo-badge" class="badge hidden"></div>
     <div id="timer-badge" class="badge">1:15</div>
     <div id="coins-badge" class="badge">💰 0</div>
+    <button id="btn-buy-table" class="badge">🪑 Comprar mesa · 3/6 (8000💰)</button>
     <a href="index.html" style="color:#b8aec2; font-size:12px; margin-left:14px;">← Volver al juego</a>
   </div>
   <div id="canvas-wrap"></div>
