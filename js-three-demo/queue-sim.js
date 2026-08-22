@@ -13,6 +13,8 @@ const EXIT_HAPPY_X = 6.5;
 const WALK_DURATION = 2.1; // segundos para cruzar toda la barra
 const FLY_DURATION = 0.55; // segundos que tarda el platillo en llegar de la barra al cliente
 const SHAKE_DURATION = 0.3; // segundos que dura la sacudida de "toque rechazado"
+const REST_DURATION = 2; // segundos que el platillo se queda reposando en la mesa antes de irse
+const TABLE_REST_Y = 0.82; // altura sobre el tablero donde "aterriza" el platillo
 
 // Pedido de Dany: 5s extra de paciencia base — ahora que servir pasa por
 // cuchillo + armado (antes era instantáneo), la paciencia original se
@@ -91,7 +93,7 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
       walkFrom: ENTRY_X, walkTo: slot.x, walkT: 0,
       phase: Math.random() * Math.PI * 2,
       lastBarDraw: 0,
-      flyingDishes: [], pendingFlights: 0,
+      flyingDishes: [], pendingFlights: 0, restingDish: null,
     });
   }
 
@@ -323,14 +325,30 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
         flight.sprite.scale.set(scale, scale, 1);
 
         if (flight.t >= 1) {
-          scene.remove(flight.sprite);
-          disposeDishSprite(flight.sprite);
           entry.flyingDishes.splice(j, 1);
           entry.pendingFlights--;
           if (flight.isFinal && entry.pendingFlights <= 0 && entry.state === 'waiting') {
+            // Pedido de Dany: que se note que la mesa sirve de algo — el
+            // platillo se queda reposando ahí un rato en vez de
+            // desaparecer y que el cliente se vaya de inmediato.
             mesh.userData.setMood('happy');
-            beginExit(entry, true);
+            flight.sprite.position.set(mesh.position.x, TABLE_REST_Y, TABLE_Z);
+            flight.sprite.scale.set(0.5, 0.5, 1);
+            entry.restingDish = { sprite: flight.sprite, t: 0 };
+          } else {
+            scene.remove(flight.sprite);
+            disposeDishSprite(flight.sprite);
           }
+        }
+      }
+
+      if (entry.restingDish) {
+        entry.restingDish.t += dt;
+        if (entry.restingDish.t >= REST_DURATION) {
+          scene.remove(entry.restingDish.sprite);
+          disposeDishSprite(entry.restingDish.sprite);
+          entry.restingDish = null;
+          beginExit(entry, true);
         }
       }
 
@@ -350,6 +368,7 @@ export function createQueueSim({ scene, camera, level, platePosition, onServed, 
       scene.remove(entry.mesh);
       scene.remove(entry.bubble.mesh);
       entry.flyingDishes.forEach((f) => { scene.remove(f.sprite); disposeDishSprite(f.sprite); });
+      if (entry.restingDish) { scene.remove(entry.restingDish.sprite); disposeDishSprite(entry.restingDish.sprite); }
     }
     active.length = 0;
     combo = 0;

@@ -4,6 +4,7 @@ import { Plate } from '../js/game/Plate.js';
 import { STATION_TYPES } from '../js/data/recipes.js';
 
 const PROGRESS_REDRAW_INTERVAL = 0.1; // segundos entre redibujos de la barra
+const STATION_EMOJI = Object.fromEntries(STATION_TYPES.map((s) => [s.type, s.emoji]));
 
 // Cocina real: usa las mismas clases Station y Plate que KitchenScene, con
 // el mismo límite de 2 "mesas" (slots) en paralelo — antes de esto, tocar
@@ -21,6 +22,15 @@ export function createKitchenSim({ scene, camera, stationMeshes, slotCount = 2 }
     scene.add(badge.mesh);
     badges[type] = badge;
   }
+
+  // Pedido de Dany: "no hay dónde ver el pedido en cola de producción" —
+  // antes, en cuanto se arrancaba un plato (decideCustomerTap → 'start')
+  // no había NADA visible hasta tocar la estación correcta; el jugador
+  // tenía que acordarse solo. Un ticket por mesa de cocina, arriba del
+  // centro de la barra, muestra qué se está preparando y en qué estación
+  // toca, igual que el panel "Mesas de preparación" del juego 2D.
+  const slotTickets = Array.from({ length: slotCount }, (_, i) => buildSlotTicket(i, slotCount));
+  slotTickets.forEach((t) => scene.add(t.mesh));
 
   function stationWorldPosition(type) {
     const mesh = stationMeshes[type];
@@ -105,12 +115,72 @@ export function createKitchenSim({ scene, camera, stationMeshes, slotCount = 2 }
       }
       badges[type].refresh(station, dt, stationWorldPosition(type), camera);
     }
+
+    const centerPos = stationWorldPosition('cook');
+    slots.forEach((slot, i) => slotTickets[i].refresh(slot.plate, centerPos, camera));
   }
 
   return {
     slots, stations,
     onStationTap, startPlate, clearSlot, update, getStationTypeAt, reset,
   };
+}
+
+// Ticket de la cola de producción: qué se está preparando en esta mesa
+// de cocina (si hay algo) y qué estación le toca ahora — 🔪/🔥/🍽️, o
+// ✅ cuando ya está listo para servir. Arriba del centro de la barra,
+// uno junto al otro para las 2 mesas. Invisible cuando la mesa está
+// libre.
+function buildSlotTicket(index, total) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 110;
+  canvas.height = 110;
+  const ctx = canvas.getContext('2d');
+  const texture = new THREE.CanvasTexture(canvas);
+  const geo = new THREE.PlaneGeometry(0.42, 0.42);
+  const mat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.renderOrder = 13;
+  mesh.visible = false;
+
+  const xOffset = (index - (total - 1) / 2) * 0.55;
+  let lastKey = null;
+
+  function draw(recipeEmoji, stepEmoji) {
+    ctx.clearRect(0, 0, 110, 110);
+    ctx.fillStyle = 'rgba(34,26,41,0.94)';
+    roundRectPath(ctx, 3, 3, 104, 104, 18);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    roundRectPath(ctx, 3, 3, 104, 104, 18);
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '42px sans-serif';
+    ctx.fillText(recipeEmoji, 55, 38);
+    ctx.font = '28px sans-serif';
+    ctx.fillText(stepEmoji, 55, 82);
+    texture.needsUpdate = true;
+  }
+
+  function refresh(plate, centerPos, camera) {
+    mesh.visible = !!plate;
+    if (!plate) return;
+
+    mesh.position.set(centerPos.x + xOffset, centerPos.y + 1.35, centerPos.z);
+    if (camera) mesh.quaternion.copy(camera.quaternion);
+
+    const stepType = plate.state === 'ready' ? 'ready' : plate.currentStep().station;
+    const key = plate.recipe.id + ':' + stepType;
+    if (key !== lastKey) {
+      lastKey = key;
+      draw(plate.recipe.emoji, stepType === 'ready' ? '✅' : STATION_EMOJI[stepType]);
+    }
+  }
+
+  return { mesh, refresh };
 }
 
 // Botón cuadrado siempre visible arriba de cada estación — es tanto el
