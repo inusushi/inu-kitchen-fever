@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildChef } from './chef3d.js';
 import { buildBackWall, buildSideWalls, buildBambooCluster, createPetalSystem, buildFloorTexture } from './scene-environment.js';
-import { buildCounter, buildChopStation, buildCookStation, buildPlateStation } from './kitchen-stations.js';
+import { buildCounter, buildChopStation, buildCookStation, buildPlateStation, buildTakeoutWindow } from './kitchen-stations.js';
 import { createQueueSim, MAX_TABLES, TABLE_COST } from './queue-sim.js';
+import { createTakeoutSim } from './takeout-sim.js';
 import { createKitchenSim } from './kitchen-sim.js';
 import { LEVELS } from '../js/data/levels.js';
 import { isRushHour } from '../js/game/customerTypes.js';
@@ -170,6 +171,13 @@ const chefs = [
   return chef;
 });
 
+// --- Ventanilla de comida para llevar, del lado derecho del cuarto —
+// comparte la misma cocina (chop/cook/plate) que las mesas; solo cambia
+// por dónde llega la gente y a dónde se le entrega su pedido. ---
+const takeoutWindow = buildTakeoutWindow();
+takeoutWindow.position.set(7, 0, -1.3);
+scene.add(takeoutWindow);
+
 // --- HUD real: monedas, timer, combo y hora pico (mismas piezas que
 // KitchenScene: serveReward, isRushHour, calculateStars) ---
 const coinsEl = document.getElementById('coins-badge');
@@ -232,6 +240,7 @@ function endRound() {
 
 btnRestart.addEventListener('click', () => {
   queueSim.reset();
+  takeoutSim.reset();
   kitchenSim.reset();
   startRound();
 });
@@ -248,6 +257,22 @@ const queueSim = createQueueSim({
   },
   onLeft: () => comboEl.classList.add('hidden'),
 });
+
+// --- Cola de comida para llevar, del lado derecho — misma cocina, sin
+// mesas propias (usa las estaciones y las 2 mesas de preparación que ya
+// comparten los clientes de las mesas). ---
+const takeoutSim = createTakeoutSim({
+  scene, camera, level, platePosition: plateStation.position,
+  onServed: (coins, combo) => {
+    coinsEarned += coins;
+    coinsEl.textContent = `💰 ${coinsEarned}`;
+    updateBuyTableButton();
+    comboEl.textContent = `🔥 x${combo}`;
+    comboEl.classList.toggle('hidden', combo < 2);
+  },
+  onLeft: () => comboEl.classList.add('hidden'),
+});
+
 startRound();
 
 let pointerDownAt = null;
@@ -272,21 +297,29 @@ renderer.domElement.addEventListener('pointerup', (e) => {
     return;
   }
 
-  // Si no, ¿tocaste a un cliente? decideCustomerTap es la misma función
-  // que usa KitchenScene: decide entre servir (ya hay un plato listo para
-  // él), arrancar uno nuevo en una mesa libre, o rechazar el toque.
-  const entry = queueSim.getCustomerEntryAt(ndcX, ndcY);
+  // Si no, ¿tocaste a un cliente? Puede ser de las mesas o de la
+  // ventanilla — las dos colas comparten la misma cocina, así que
+  // decideCustomerTap necesita ver a TODOS los clientes activos de
+  // ambas para calcular bien oferta y demanda, no solo los de la cola
+  // donde cayó el toque.
+  let entry = queueSim.getCustomerEntryAt(ndcX, ndcY);
+  let ownerSim = queueSim;
+  if (!entry) {
+    entry = takeoutSim.getCustomerEntryAt(ndcX, ndcY);
+    ownerSim = takeoutSim;
+  }
   if (!entry) return;
 
-  const decision = decideCustomerTap(entry.game, kitchenSim.slots, queueSim.getActiveCustomerGames());
+  const allGames = [...queueSim.getActiveCustomerGames(), ...takeoutSim.getActiveCustomerGames()];
+  const decision = decideCustomerTap(entry.game, kitchenSim.slots, allGames);
   if (decision.action === 'serve') {
     const recipe = kitchenSim.slots[decision.slotIndex].plate.recipe;
-    queueSim.serveCustomerEntry(entry, recipe);
+    ownerSim.serveCustomerEntry(entry, recipe);
     kitchenSim.clearSlot(decision.slotIndex);
   } else if (decision.action === 'start') {
     kitchenSim.startPlate(decision.recipe, decision.slotIndex);
   } else if (decision.action === 'reject') {
-    queueSim.rejectCustomerEntry(entry);
+    ownerSim.rejectCustomerEntry(entry);
   }
 });
 
@@ -315,6 +348,7 @@ function animate() {
     rushEl.classList.toggle('hidden', !isRushHour(timeLeft, level.duration));
 
     queueSim.update(dt, t, timeLeft);
+    takeoutSim.update(dt, t, timeLeft);
     kitchenSim.update(dt);
     if (timeLeft <= 0) endRound();
   }

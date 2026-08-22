@@ -87,7 +87,9 @@ export function buildFloorTexture({ repeat = 18 } = {}) {
 // 4 patas delgadas y ahusadas. El tablero usa un recorte de la propia
 // foto (solo la veta de madera limpia, sin el fondo gris ni la orilla)
 // como textura repetida — no la foto completa estirada.
-export function buildBambooTable({ legCount = 4, radius = 0.42, height = 0.55 } = {}) {
+// Medidas 20% más grandes que la primera versión (radius/height base
+// 0.42/0.55 → 0.504/0.66), a pedido de Dany.
+export function buildBambooTable({ legCount = 4, radius = 0.504, height = 0.66 } = {}) {
   const group = new THREE.Group();
   const legMat = new THREE.MeshStandardMaterial({ color: '#a9764a', roughness: 0.55 });
   const rimMat = new THREE.MeshStandardMaterial({ color: '#8f6239', roughness: 0.5 });
@@ -99,7 +101,7 @@ export function buildBambooTable({ legCount = 4, radius = 0.42, height = 0.55 } 
     const lz = Math.sin(angle) * radius * 0.68;
 
     // Ahusada: más ancha arriba, angosta abajo, como en la foto.
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.02, height, 8), legMat);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.0384, 0.024, height, 8), legMat);
     leg.position.set(lx, height / 2, lz);
     leg.castShadow = true;
     group.add(leg);
@@ -108,7 +110,7 @@ export function buildBambooTable({ legCount = 4, radius = 0.42, height = 0.55 } 
   // Orilla gruesa y redondeada envolviendo el tablero — el "bambú
   // enrollado" de la foto, no cilindros de bambú crudo como el resto
   // de las plantas de la escena (esto es un mueble terminado).
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.94, 0.055, 10, 32), rimMat);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.94, 0.066, 10, 32), rimMat);
   rim.rotation.x = Math.PI / 2;
   rim.position.y = height;
   rim.castShadow = true;

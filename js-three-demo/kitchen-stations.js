@@ -24,6 +24,46 @@ export function buildCounter({ width = 7.4, depth = 0.85, height = 1.05 } = {}) 
   return group;
 }
 
+// --- Ventanilla de comida para llevar: mostrador chico con toldo ---
+// Mismo lenguaje visual que la barra principal (base oscura + tapa
+// clara) para que se sienta parte del mismo local, más un toldo cálido
+// sobre 2 postes que lo distingue como "puesto", no otra barra más.
+export function buildTakeoutWindow({ width = 2.2, depth = 0.7, height = 0.9 } = {}) {
+  const group = new THREE.Group();
+
+  const baseMat = new THREE.MeshStandardMaterial({ color: '#3d2a20', roughness: 0.75 });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), baseMat);
+  base.position.y = height / 2;
+  base.castShadow = true;
+  base.receiveShadow = true;
+  group.add(base);
+
+  const topMat = new THREE.MeshStandardMaterial({ color: '#c9a877', roughness: 0.5 });
+  const top = new THREE.Mesh(new THREE.BoxGeometry(width + 0.1, 0.06, depth + 0.1), topMat);
+  top.position.y = height + 0.03;
+  top.castShadow = true;
+  top.receiveShadow = true;
+  group.add(top);
+
+  const awningMat = new THREE.MeshStandardMaterial({ color: '#a13c22', roughness: 0.6, side: THREE.DoubleSide });
+  const awning = new THREE.Mesh(new THREE.BoxGeometry(width + 0.35, 0.04, depth + 0.55), awningMat);
+  awning.position.set(0, height + 0.65, depth * 0.2);
+  awning.rotation.x = -0.22;
+  awning.castShadow = true;
+  group.add(awning);
+
+  const postMat = new THREE.MeshStandardMaterial({ color: '#2b1c14', roughness: 0.7 });
+  [-1, 1].forEach((side) => {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, height + 0.62, 8), postMat);
+    post.position.set(side * (width / 2 - 0.12), (height + 0.62) / 2, depth / 2 - 0.05);
+    post.castShadow = true;
+    group.add(post);
+  });
+
+  group.userData.topY = height + 0.06;
+  return group;
+}
+
 // --- Estación "chop" (🔪 Preparar): tabla + cuchillo recargado ---
 export function buildChopStation() {
   const group = new THREE.Group();
