@@ -82,38 +82,82 @@ export function buildFloorTexture({ repeat = 18 } = {}) {
 }
 
 // --- Mesa de bambú para los clientes ---
-// Procedural mientras llega la referencia real: 3 patas de bambú (mismo
-// cilindro+anillo que buildBambooCluster) y un tablero redondo con la
-// misma textura de duelas que el piso, solo que repetida menos veces.
-export function buildBambooTable({ legCount = 3, radius = 0.4, height = 0.85 } = {}) {
+// Basada en la foto real que mandó Dany (public/fotos/mesa-bambu.jpg):
+// tablero bajo y ancho, orilla gruesa y redondeada tipo bambú enrollado,
+// 4 patas delgadas y ahusadas. El tablero usa un recorte de la propia
+// foto (solo la veta de madera limpia, sin el fondo gris ni la orilla)
+// como textura repetida — no la foto completa estirada.
+export function buildBambooTable({ legCount = 4, radius = 0.42, height = 0.55 } = {}) {
   const group = new THREE.Group();
-  const legMat = new THREE.MeshStandardMaterial({ color: '#4f7a3d', roughness: 0.55 });
-  const ringMat = new THREE.MeshStandardMaterial({ color: '#33512a', roughness: 0.6 });
-  const topMat = new THREE.MeshStandardMaterial({ map: buildFloorTexture({ repeat: 3 }), roughness: 0.6 });
+  const legMat = new THREE.MeshStandardMaterial({ color: '#a9764a', roughness: 0.55 });
+  const rimMat = new THREE.MeshStandardMaterial({ color: '#8f6239', roughness: 0.5 });
+  const topMat = new THREE.MeshStandardMaterial({ map: buildTableTopTexture(), roughness: 0.45 });
 
   for (let i = 0; i < legCount; i++) {
     const angle = (i / legCount) * Math.PI * 2 + Math.PI / legCount;
-    const lx = Math.cos(angle) * radius * 0.65;
-    const lz = Math.sin(angle) * radius * 0.65;
+    const lx = Math.cos(angle) * radius * 0.68;
+    const lz = Math.sin(angle) * radius * 0.68;
 
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, height, 8), legMat);
+    // Ahusada: más ancha arriba, angosta abajo, como en la foto.
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.02, height, 8), legMat);
     leg.position.set(lx, height / 2, lz);
     leg.castShadow = true;
     group.add(leg);
-
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.038, 0.008, 6, 12), ringMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.set(lx, height * 0.55, lz);
-    group.add(ring);
   }
 
-  const top = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 0.05, 24), topMat);
+  // Orilla gruesa y redondeada envolviendo el tablero — el "bambú
+  // enrollado" de la foto, no cilindros de bambú crudo como el resto
+  // de las plantas de la escena (esto es un mueble terminado).
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.94, 0.055, 10, 32), rimMat);
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = height;
+  rim.castShadow = true;
+  group.add(rim);
+
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.9, radius * 0.9, 0.05, 32), topMat);
   top.position.y = height;
   top.castShadow = true;
   top.receiveShadow = true;
   group.add(top);
 
   return group;
+}
+
+// Recorte real de la foto de la mesa: un parche limpio de veta de
+// madera (sin fondo gris ni orilla), cacheado y compartido entre todas
+// las mesas — se pinta un color liso al instante y se sustituye por el
+// recorte real en cuanto la foto termina de cargar, sin bloquear nada.
+let cachedTableTopTexture = null;
+function buildTableTopTexture() {
+  if (cachedTableTopTexture) return cachedTableTopTexture;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#c9925a';
+  ctx.fillRect(0, 0, 64, 64);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(3, 3);
+  cachedTableTopTexture = texture;
+
+  const img = new Image();
+  img.onload = () => {
+    // Parche de veta limpia dentro del tablero, lejos de la orilla, el
+    // fondo y las patas — verificado a ojo contra la foto real.
+    const crop = { x: 480, y: 250, w: 420, h: 90 };
+    canvas.width = crop.w;
+    canvas.height = crop.h;
+    ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+    texture.needsUpdate = true;
+  };
+  img.src = 'fotos/mesa-bambu.jpg';
+
+  return texture;
 }
 
 // --- Paredes laterales: cuarto de 3 paredes, sin la "cuarta pared" que
